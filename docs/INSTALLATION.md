@@ -398,6 +398,37 @@ echo $PATH | grep -q ".local/bin" && echo "✓ In PATH"
 
 ### Upgrade to Latest Version
 
+**Method 1: Using the upgrade command (Recommended)**
+
+```bash
+kubectl pg-tunnel upgrade
+```
+
+This command will:
+- Download and run the latest installer
+- Backup your existing installation (with timestamp)
+- Install the new version
+- Preserve your configuration file
+
+**Method 2: Re-run the installer**
+
+If you installed using the quick install method (curl | bash):
+
+```bash
+# Simply run the installer again
+curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/install.sh | bash
+```
+
+The installer will:
+- Detect existing installation and prompt to overwrite
+- Backup your existing installation (with timestamp)
+- Download and install the new version
+- Preserve your configuration file
+
+**Method 3: From cloned repository**
+
+If you installed from a cloned repository:
+
 ```bash
 # Pull latest changes
 cd kubectl-pg-tunnel
@@ -406,11 +437,6 @@ git pull origin main
 # Run installer (will overwrite existing installation)
 ./install.sh
 ```
-
-The installer will:
-- Backup your existing installation
-- Install the new version
-- Preserve your configuration file
 
 ### Check for Updates
 

@@ -45,6 +45,22 @@ A kubectl plugin that simplifies creating secure PostgreSQL tunnels through Kube
 curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/install.sh | bash
 ```
 
+### Upgrade
+
+Upgrade to the latest version using the built-in command:
+
+```bash
+kubectl pg-tunnel upgrade
+```
+
+Or run the install script again:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/install.sh | bash
+```
+
+The installer will backup your existing installation and preserve your configuration.
+
 ### Configure
 
 ```bash
