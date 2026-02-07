@@ -29,6 +29,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- fix the release version management (#6)
+- add the auto release workflow (#5)
+- add the uninstall command for this plugin (#4)
+- improve the README.md and remove the duplicate sections (#1)
+
+### Changed
+
+- initial commit
+
+### Fixed
+
+- local-port is not used from the config & add the upgrade command (#3)
+- fix the lint and test (#2)
+
+
+## [1.0.0] - 2026-02-07
+
+### Added
+
 - add the auto release workflow (#5)
 
 
