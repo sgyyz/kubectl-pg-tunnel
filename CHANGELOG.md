@@ -25,6 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Local port configuration now properly read from config file
 
+## [1.0.0] - 2026-02-07
+
+### Added
+
+- add the auto release workflow (#5)
+
+
 ## [1.0.0] - YYYY-MM-DD
 
 ### Added

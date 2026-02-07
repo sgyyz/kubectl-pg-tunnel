@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+# Use bash 4.0+ if available for better performance, otherwise fall back to bash 3.2
 set -euo pipefail
 
 # update-changelog.sh - Update CHANGELOG.md from git commits
@@ -91,18 +92,15 @@ categorize_commit() {
     echo "${category}"
 }
 
-# Parse commits and group by category
-declare -A categories
-categories=(
-    ["Added"]=""
-    ["Changed"]=""
-    ["Fixed"]=""
-    ["Removed"]=""
-    ["Deprecated"]=""
-    ["Security"]=""
-    ["Documentation"]=""
-    ["Performance"]=""
-)
+# Parse commits and group by category (bash 3.2 compatible)
+cat_added=""
+cat_changed=""
+cat_fixed=""
+cat_removed=""
+cat_deprecated=""
+cat_security=""
+cat_documentation=""
+cat_performance=""
 
 echo "Processing commits..."
 # shellcheck disable=SC2312
@@ -125,14 +123,66 @@ while IFS= read -r commit; do
         clean_message="${message#*: }"
     fi
 
-    # Add to category
-    if [[ -n "${categories[${category}]+x}" ]]; then
-        if [[ -n "${categories[${category}]}" ]]; then
-            categories[${category}]="${categories[${category}]}"$'\n'"- ${clean_message}"
-        else
-            categories[${category}]="- ${clean_message}"
-        fi
-    fi
+    # Add to appropriate category variable
+    # shellcheck disable=SC2249
+    case "${category}" in
+        "Added")
+            if [[ -n "${cat_added}" ]]; then
+                cat_added="${cat_added}"$'\n'"- ${clean_message}"
+            else
+                cat_added="- ${clean_message}"
+            fi
+            ;;
+        "Changed")
+            if [[ -n "${cat_changed}" ]]; then
+                cat_changed="${cat_changed}"$'\n'"- ${clean_message}"
+            else
+                cat_changed="- ${clean_message}"
+            fi
+            ;;
+        "Fixed")
+            if [[ -n "${cat_fixed}" ]]; then
+                cat_fixed="${cat_fixed}"$'\n'"- ${clean_message}"
+            else
+                cat_fixed="- ${clean_message}"
+            fi
+            ;;
+        "Removed")
+            if [[ -n "${cat_removed}" ]]; then
+                cat_removed="${cat_removed}"$'\n'"- ${clean_message}"
+            else
+                cat_removed="- ${clean_message}"
+            fi
+            ;;
+        "Deprecated")
+            if [[ -n "${cat_deprecated}" ]]; then
+                cat_deprecated="${cat_deprecated}"$'\n'"- ${clean_message}"
+            else
+                cat_deprecated="- ${clean_message}"
+            fi
+            ;;
+        "Security")
+            if [[ -n "${cat_security}" ]]; then
+                cat_security="${cat_security}"$'\n'"- ${clean_message}"
+            else
+                cat_security="- ${clean_message}"
+            fi
+            ;;
+        "Documentation")
+            if [[ -n "${cat_documentation}" ]]; then
+                cat_documentation="${cat_documentation}"$'\n'"- ${clean_message}"
+            else
+                cat_documentation="- ${clean_message}"
+            fi
+            ;;
+        "Performance")
+            if [[ -n "${cat_performance}" ]]; then
+                cat_performance="${cat_performance}"$'\n'"- ${clean_message}"
+            else
+                cat_performance="- ${clean_message}"
+            fi
+            ;;
+    esac
 done < <(git rev-list "${COMMIT_RANGE}")
 
 echo "Commits processed"
@@ -140,12 +190,11 @@ echo ""
 
 # Check if there are any changes
 has_changes=false
-for category in "${!categories[@]}"; do
-    if [[ -n "${categories[${category}]}" ]]; then
-        has_changes=true
-        break
-    fi
-done
+if [[ -n "${cat_added}" ]] || [[ -n "${cat_changed}" ]] || [[ -n "${cat_fixed}" ]] || \
+   [[ -n "${cat_removed}" ]] || [[ -n "${cat_deprecated}" ]] || [[ -n "${cat_security}" ]] || \
+   [[ -n "${cat_documentation}" ]] || [[ -n "${cat_performance}" ]]; then
+    has_changes=true
+fi
 
 if [[ "${has_changes}" = false ]]; then
     echo "No commits found to add to CHANGELOG"
@@ -160,15 +209,70 @@ cat > "${TEMP_FILE}" <<EOF
 EOF
 
 # Add categories with content
+# Using individual redirects for clarity (disable SC2129 style warning)
 # shellcheck disable=SC2129
-for category in "Added" "Changed" "Fixed" "Removed" "Deprecated" "Security" "Performance" "Documentation"; do
-    if [[ -n "${categories[${category}]}" ]]; then
-        echo "### ${category}" >> "${TEMP_FILE}"
-        echo "" >> "${TEMP_FILE}"
-        echo "${categories[${category}]}" >> "${TEMP_FILE}"
-        echo "" >> "${TEMP_FILE}"
-    fi
-done
+if [[ -n "${cat_added}" ]]; then
+    echo "### Added" >> "${TEMP_FILE}"
+    echo "" >> "${TEMP_FILE}"
+    echo "${cat_added}" >> "${TEMP_FILE}"
+    echo "" >> "${TEMP_FILE}"
+fi
+
+# shellcheck disable=SC2129
+if [[ -n "${cat_changed}" ]]; then
+    echo "### Changed" >> "${TEMP_FILE}"
+    echo "" >> "${TEMP_FILE}"
+    echo "${cat_changed}" >> "${TEMP_FILE}"
+    echo "" >> "${TEMP_FILE}"
+fi
+
+# shellcheck disable=SC2129
+if [[ -n "${cat_fixed}" ]]; then
+    echo "### Fixed" >> "${TEMP_FILE}"
+    echo "" >> "${TEMP_FILE}"
+    echo "${cat_fixed}" >> "${TEMP_FILE}"
+    echo "" >> "${TEMP_FILE}"
+fi
+
+# shellcheck disable=SC2129
+if [[ -n "${cat_removed}" ]]; then
+    echo "### Removed" >> "${TEMP_FILE}"
+    echo "" >> "${TEMP_FILE}"
+    echo "${cat_removed}" >> "${TEMP_FILE}"
+    echo "" >> "${TEMP_FILE}"
+fi
+
+# shellcheck disable=SC2129
+if [[ -n "${cat_deprecated}" ]]; then
+    echo "### Deprecated" >> "${TEMP_FILE}"
+    echo "" >> "${TEMP_FILE}"
+    echo "${cat_deprecated}" >> "${TEMP_FILE}"
+    echo "" >> "${TEMP_FILE}"
+fi
+
+# shellcheck disable=SC2129
+if [[ -n "${cat_security}" ]]; then
+    echo "### Security" >> "${TEMP_FILE}"
+    echo "" >> "${TEMP_FILE}"
+    echo "${cat_security}" >> "${TEMP_FILE}"
+    echo "" >> "${TEMP_FILE}"
+fi
+
+# shellcheck disable=SC2129
+if [[ -n "${cat_performance}" ]]; then
+    echo "### Performance" >> "${TEMP_FILE}"
+    echo "" >> "${TEMP_FILE}"
+    echo "${cat_performance}" >> "${TEMP_FILE}"
+    echo "" >> "${TEMP_FILE}"
+fi
+
+# shellcheck disable=SC2129
+if [[ -n "${cat_documentation}" ]]; then
+    echo "### Documentation" >> "${TEMP_FILE}"
+    echo "" >> "${TEMP_FILE}"
+    echo "${cat_documentation}" >> "${TEMP_FILE}"
+    echo "" >> "${TEMP_FILE}"
+fi
 
 # Check if CHANGELOG.md exists
 if [[ ! -f CHANGELOG.md ]]; then
@@ -182,38 +286,53 @@ cp CHANGELOG.md CHANGELOG.md.bak
 
 # Find the [Unreleased] section and insert new version after it
 if grep -q "## \[Unreleased\]" CHANGELOG.md; then
-    # Insert after [Unreleased] section
-    # shellcheck disable=SC2312
-    awk -v new_content="$(cat "${TEMP_FILE}")" '
-    /^## \[Unreleased\]/ {
-        print
-        # Print lines until next ## heading or end
-        while (getline > 0 && !/^## /) {
-            print
-        }
-        # Print new content
-        print new_content
-        # Print the ## line we just read
-        if (NF > 0) print
-        next
-    }
-    { print }
-    ' CHANGELOG.md > CHANGELOG.md.tmp
+    # Insert after [Unreleased] section using sed
+    # Find the line number of [Unreleased]
+    line_num=$(grep -n "^## \[Unreleased\]" CHANGELOG.md | head -1 | cut -d: -f1)
+
+    # Find the next ## heading after [Unreleased]
+    next_heading=$(tail -n +"$((line_num + 1))" CHANGELOG.md | grep -n "^## " | head -1 | cut -d: -f1)
+
+    if [[ -n "${next_heading}" ]]; then
+        # Insert before next heading
+        insert_line=$((line_num + next_heading))
+    else
+        # No next heading, append at end
+        insert_line=$(wc -l < CHANGELOG.md)
+        insert_line=$((insert_line + 1))
+    fi
+
+    # Insert the new content
+    {
+        head -n "$((insert_line - 1))" CHANGELOG.md
+        cat "${TEMP_FILE}"
+        echo ""
+        tail -n +"${insert_line}" CHANGELOG.md
+    } > CHANGELOG.md.tmp
     mv CHANGELOG.md.tmp CHANGELOG.md
 else
     # No [Unreleased] section, insert at top after title
-    # shellcheck disable=SC2312
-    awk -v new_content="$(cat "${TEMP_FILE}")" '
-    /^# Changelog/ {
-        print
-        getline
-        print
-        print new_content
-        next
-    }
-    { print }
-    ' CHANGELOG.md > CHANGELOG.md.tmp
-    mv CHANGELOG.md.tmp CHANGELOG.md
+    # Find # Changelog line
+    line_num=$(grep -n "^# Changelog" CHANGELOG.md | head -1 | cut -d: -f1)
+
+    if [[ -n "${line_num}" ]]; then
+        # Insert after title and blank line
+        {
+            head -n "$((line_num + 1))" CHANGELOG.md
+            echo ""
+            cat "${TEMP_FILE}"
+            tail -n +"$((line_num + 2))" CHANGELOG.md
+        } > CHANGELOG.md.tmp
+        mv CHANGELOG.md.tmp CHANGELOG.md
+    else
+        # No title found, insert at top
+        {
+            cat "${TEMP_FILE}"
+            echo ""
+            cat CHANGELOG.md
+        } > CHANGELOG.md.tmp
+        mv CHANGELOG.md.tmp CHANGELOG.md
+    fi
 fi
 
 # Update the version comparison links at the bottom

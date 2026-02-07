@@ -21,27 +21,21 @@ jobs:
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Update version and CHANGELOG
+      - name: Update CHANGELOG date
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
           RELEASE_DATE=$(date +%Y-%m-%d)
-          echo "Updating version to v${VERSION}"
           echo "Release date: ${RELEASE_DATE}"
 
-          # Update kubectl-pg_tunnel
-          sed -i "s/__VERSION__/v${VERSION}/g" kubectl-pg_tunnel
-
-          # Update install.sh
-          sed -i "s/VERSION=\".*\"/VERSION=\"${VERSION}\"/g" install.sh
-
           # Update CHANGELOG.md - replace placeholder date with actual release date
-          # Replace [VERSION] - YYYY-MM-DD or [VERSION] - Unreleased with actual date
+          # The version should already be updated locally before tag push
           if grep -q "## \[${VERSION}\]" CHANGELOG.md; then
+            # Replace YYYY-MM-DD placeholder or any existing date with actual release date
             sed -i "s/## \[${VERSION}\] - [0-9-]*/## [${VERSION}] - ${RELEASE_DATE}/g" CHANGELOG.md
-            sed -i "s/## \[${VERSION}\] - Unreleased/## [${VERSION}] - ${RELEASE_DATE}/g" CHANGELOG.md
-            echo "Updated CHANGELOG.md with release date"
+            echo "Updated CHANGELOG.md with release date: ${RELEASE_DATE}"
           else
-            echo "Version ${VERSION} not found in CHANGELOG.md, skipping date update"
+            echo "Warning: Version ${VERSION} not found in CHANGELOG.md"
+            echo "Make sure you ran 'make release VERSION=${VERSION}' before tagging"
           fi
 
       - name: Create release archive

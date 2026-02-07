@@ -3,10 +3,10 @@
 set -euo pipefail
 
 # kubectl-pg-tunnel - A kubectl plugin for creating PostgreSQL tunnels through jump pods
-# Version: __VERSION__
+# Version: v1.0.0
 # This placeholder will be replaced during release
 
-VERSION="${KUBECTL_PG_TUNNEL_VERSION:-__VERSION__}"
+VERSION="${KUBECTL_PG_TUNNEL_VERSION:-v1.0.0}"
 SCRIPT_NAME="kubectl pg-tunnel"
 GITHUB_REPO="sgyyz/kubectl-pg-tunnel"
 
@@ -164,8 +164,8 @@ show_version() {
     local current_version="${VERSION#v}"
     echo "${SCRIPT_NAME} version ${current_version}"
 
-    # Only check for updates if we have a real version (not __VERSION__ placeholder)
-    if [[ "${VERSION}" != "__VERSION__" ]] && [[ -n "${VERSION}" ]]; then
+    # Only check for updates if we have a real version (not v1.0.0 placeholder)
+    if [[ "${VERSION}" != "v1.0.0" ]] && [[ -n "${VERSION}" ]]; then
         local latest_version
         latest_version=$(get_latest_version)
 
