@@ -1,0 +1,125 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Update version and CHANGELOG
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          RELEASE_DATE=$(date +%Y-%m-%d)
+          echo "Updating version to v${VERSION}"
+          echo "Release date: ${RELEASE_DATE}"
+
+          # Update kubectl-pg_tunnel
+          sed -i "s/__VERSION__/v${VERSION}/g" kubectl-pg_tunnel
+
+          # Update install.sh
+          sed -i "s/VERSION=\".*\"/VERSION=\"${VERSION}\"/g" install.sh
+
+          # Update CHANGELOG.md - replace placeholder date with actual release date
+          # Replace [VERSION] - YYYY-MM-DD or [VERSION] - Unreleased with actual date
+          if grep -q "## \[${VERSION}\]" CHANGELOG.md; then
+            sed -i "s/## \[${VERSION}\] - [0-9-]*/## [${VERSION}] - ${RELEASE_DATE}/g" CHANGELOG.md
+            sed -i "s/## \[${VERSION}\] - Unreleased/## [${VERSION}] - ${RELEASE_DATE}/g" CHANGELOG.md
+            echo "Updated CHANGELOG.md with release date"
+          else
+            echo "Version ${VERSION} not found in CHANGELOG.md, skipping date update"
+          fi
+
+      - name: Create release archive
+        run: |
+          mkdir -p release
+          cp kubectl-pg_tunnel release/
+          cp install.sh release/
+          cp uninstall.sh release/
+          cp -r config release/
+          cp README.md release/
+          cp LICENSE release/
+          cp CHANGELOG.md release/
+
+          cd release
+          tar -czf ../kubectl-pg-tunnel-v${{ steps.get_version.outputs.VERSION }}.tar.gz *
+          cd ..
+
+          # Create checksums
+          sha256sum kubectl-pg-tunnel-v${{ steps.get_version.outputs.VERSION }}.tar.gz > checksums.txt
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+
+          # Extract changelog for this version
+          CHANGELOG_CONTENT=""
+          if grep -q "## \[${VERSION}\]" CHANGELOG.md; then
+            # Extract content between this version and next version/EOF
+            CHANGELOG_CONTENT=$(awk "/## \[${VERSION}\]/,/^## \[/{if (/^## \[${VERSION}\]/) next; if (/^## \[/) exit; print}" CHANGELOG.md)
+          fi
+
+          cat > release_notes.md <<EOF
+          ## kubectl-pg-tunnel v${VERSION}
+
+          ### Installation
+
+          **Quick Install:**
+          \`\`\`bash
+          curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/v${VERSION}/install.sh | bash
+          \`\`\`
+
+          **Or download and install manually:**
+          1. Download \`kubectl-pg-tunnel-v${VERSION}.tar.gz\`
+          2. Extract: \`tar -xzf kubectl-pg-tunnel-v${VERSION}.tar.gz\`
+          3. Run: \`./install.sh\`
+
+          ### Upgrade
+
+          If you already have kubectl-pg-tunnel installed:
+          \`\`\`bash
+          kubectl pg-tunnel upgrade
+          \`\`\`
+
+          ### What's Changed
+
+          ${CHANGELOG_CONTENT}
+
+          See the [full CHANGELOG](https://github.com/${{ github.repository }}/blob/v${VERSION}/CHANGELOG.md) for complete history.
+
+          ### Checksums
+
+          \`\`\`
+          $(cat checksums.txt)
+          \`\`\`
+          EOF
+
+          echo "Release notes generated with changelog content"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: release_notes.md
+          files: |
+            kubectl-pg-tunnel-v${{ steps.get_version.outputs.VERSION }}.tar.gz
+            checksums.txt
+            kubectl-pg_tunnel
+            install.sh
+            uninstall.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

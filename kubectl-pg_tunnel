@@ -3,10 +3,12 @@
 set -euo pipefail
 
 # kubectl-pg-tunnel - A kubectl plugin for creating PostgreSQL tunnels through jump pods
-# Version: 1.0.0
+# Version: __VERSION__
+# This placeholder will be replaced during release
 
-VERSION="1.0.0"
+VERSION="${KUBECTL_PG_TUNNEL_VERSION:-__VERSION__}"
 SCRIPT_NAME="kubectl pg-tunnel"
+GITHUB_REPO="sgyyz/kubectl-pg-tunnel"
 
 # Default configuration path
 CONFIG_FILE="${PG_TUNNEL_CONFIG:-${HOME}/.config/kubectl-pg-tunnel/config.yaml}"
@@ -121,9 +123,62 @@ For more information, visit: https://github.com/yourusername/kubectl-pg-tunnel
 EOF
 }
 
+# Get latest version from GitHub
+get_latest_version() {
+    local latest_version=""
+
+    if command -v curl >/dev/null 2>&1; then
+        latest_version=$(curl -fsSL "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" 2>/dev/null | grep '"tag_name"' | sed -E 's/.*"v?([^"]+)".*/\1/' || echo "")
+    elif command -v wget >/dev/null 2>&1; then
+        latest_version=$(wget -qO- "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" 2>/dev/null | grep '"tag_name"' | sed -E 's/.*"v?([^"]+)".*/\1/' || echo "")
+    fi
+
+    echo "${latest_version}"
+}
+
+# Compare versions (returns 0 if v1 < v2, 1 if v1 >= v2)
+version_lt() {
+    local v1="$1"
+    local v2="$2"
+
+    # Remove 'v' prefix if present
+    v1="${v1#v}"
+    v2="${v2#v}"
+
+    # Simple string comparison for now
+    # This works for semantic versioning (e.g., 1.0.0, 1.2.3)
+    if [[ "${v1}" == "${v2}" ]]; then
+        return 1
+    fi
+
+    # Use sort -V to compare versions
+    if printf '%s\n%s\n' "${v1}" "${v2}" | sort -V -C 2>/dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 # Show version information
 show_version() {
-    echo "${SCRIPT_NAME} version ${VERSION}"
+    local current_version="${VERSION#v}"
+    echo "${SCRIPT_NAME} version ${current_version}"
+
+    # Only check for updates if we have a real version (not __VERSION__ placeholder)
+    if [[ "${VERSION}" != "__VERSION__" ]] && [[ -n "${VERSION}" ]]; then
+        local latest_version
+        latest_version=$(get_latest_version)
+
+        if [[ -n "${latest_version}" ]]; then
+            # shellcheck disable=SC2310
+            if version_lt "${current_version}" "${latest_version}"; then
+                echo ""
+                print_warning "A newer version is available: ${latest_version}"
+                echo ""
+                echo "Update with: ${SCRIPT_NAME} upgrade"
+            fi
+        fi
+    fi
 }
 
 # Load and validate configuration

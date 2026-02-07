@@ -316,3 +316,39 @@ Contributors will be recognized in:
 - GitHub contributors page
 
 Thank you for contributing to kubectl-pg-tunnel!
+
+## Commit Message Conventions
+
+We use structured commit messages to automatically generate CHANGELOGs. This makes it easy to track changes and understand what each release includes.
+
+### Quick Reference
+
+Use these prefixes in your commit messages:
+
+- `feat:` - New feature (appears under **Added** in CHANGELOG)
+- `fix:` - Bug fix (appears under **Fixed**)
+- `docs:` - Documentation changes
+- `refactor:` - Code refactoring
+- `test:` - Test updates
+- `chore:` - Maintenance tasks
+
+### Examples
+
+```bash
+feat: add uninstall command
+fix: local-port config not being read
+docs: update installation guide
+refactor: simplify version comparison
+test: add upgrade command tests
+```
+
+For complete guidelines, see [COMMIT_CONVENTIONS.md](docs/COMMIT_CONVENTIONS.md).
+
+### Benefits
+
+- Automatic CHANGELOG generation
+- Clear communication of changes
+- Easy to understand git history
+- Professional release notes
+
+While not strictly enforced, following these conventions helps maintain a clean project history and makes releases smoother.

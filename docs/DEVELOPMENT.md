@@ -416,3 +416,27 @@ make setup-hooks
 - [BATS Documentation](https://bats-core.readthedocs.io/)
 - [yq Documentation](https://mikefarah.gitbook.io/yq/)
 - [Bash Best Practices](https://mywiki.wooledge.org/BashGuide/Practices)
+
+## Release Process
+
+See [RELEASE.md](RELEASE.md) for detailed instructions on creating releases.
+
+Quick release:
+
+```bash
+# Update CHANGELOG.md first
+git add CHANGELOG.md
+git commit -m "Update CHANGELOG for v1.0.0"
+
+# Prepare release
+make release VERSION=1.0.0
+
+# Push with tags
+git push origin main --tags
+```
+
+GitHub Actions will automatically create the release.
+
+For more information, see:
+- [RELEASE.md](RELEASE.md) - Complete release documentation
+- [CHANGELOG.md](../CHANGELOG.md) - Version history

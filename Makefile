@@ -1,4 +1,4 @@
-.PHONY: help lint test install uninstall clean check setup-hooks dev-setup
+.PHONY: help lint test install uninstall clean check setup-hooks dev-setup release
 
 help:
 	@echo "kubectl-pg-tunnel - Development Commands"
@@ -12,12 +12,18 @@ help:
 	@echo "  make install    - Install the plugin locally"
 	@echo "  make uninstall  - Uninstall the plugin"
 	@echo "  make clean      - Remove temporary files"
+	@echo "  make release    - Prepare a new release (usage: make release VERSION=1.0.0)"
 	@echo "  make help       - Show this help message"
 	@echo ""
 	@echo "First time setup:"
 	@echo "  1. make dev-setup    (installs shellcheck, bats, yq)"
 	@echo "  2. make setup-hooks  (installs git pre-commit hook)"
 	@echo "  3. make check        (verify everything works)"
+	@echo ""
+	@echo "Release process:"
+	@echo "  1. make release VERSION=1.0.0"
+	@echo "  2. git push origin main --tags"
+	@echo "  3. GitHub Actions will create the release automatically"
 	@echo ""
 	@echo "Prerequisites:"
 	@echo "  shellcheck - brew install shellcheck"
@@ -77,3 +83,15 @@ setup-hooks:
 dev-setup:
 	@echo "Running development setup..."
 	@./dev-setup.sh
+
+release:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION is required"; \
+		echo "Usage: make release VERSION=1.0.0"; \
+		exit 1; \
+	fi
+	@echo "Preparing release v$(VERSION)..."
+	@./scripts/prepare-release.sh $(VERSION)
+	@echo ""
+	@echo "Release prepared! Review changes and then:"
+	@echo "  git push origin main --tags"
