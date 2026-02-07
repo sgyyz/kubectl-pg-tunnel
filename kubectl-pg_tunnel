@@ -81,6 +81,7 @@ SUBCOMMANDS:
                            Optionally filter by environment
     edit-config            Open configuration file in \$EDITOR
     upgrade                Upgrade to the latest version
+    uninstall              Uninstall kubectl-pg-tunnel
     help                   Show this help message
     version                Show version information
 
@@ -327,6 +328,40 @@ upgrade_plugin() {
     fi
 }
 
+# Uninstall function
+uninstall_plugin() {
+    print_info "Uninstalling kubectl-pg-tunnel..."
+    echo ""
+
+    # Check if we have curl or wget
+    if command -v curl >/dev/null 2>&1; then
+        print_info "Downloading and running uninstaller..."
+        if curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/uninstall.sh | bash; then
+            echo ""
+            print_success "Uninstall completed!"
+        else
+            print_error "Uninstall failed"
+            exit 1
+        fi
+    elif command -v wget >/dev/null 2>&1; then
+        print_info "Downloading and running uninstaller..."
+        if wget -qO- https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/uninstall.sh | bash; then
+            echo ""
+            print_success "Uninstall completed!"
+        else
+            print_error "Uninstall failed"
+            exit 1
+        fi
+    else
+        print_error "Neither curl nor wget found"
+        echo ""
+        echo "Please install curl or wget and try again:"
+        echo "  macOS:  brew install curl"
+        echo "  Linux:  sudo apt-get install curl"
+        exit 1
+    fi
+}
+
 # Cleanup function
 cleanup() {
     local pod_name="$1"
@@ -500,6 +535,10 @@ main() {
                 ;;
             upgrade)
                 upgrade_plugin
+                exit 0
+                ;;
+            uninstall)
+                uninstall_plugin
                 exit 0
                 ;;
             --env)

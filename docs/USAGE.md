@@ -173,6 +173,22 @@ kubectl pg-tunnel --help
 kubectl pg-tunnel --version
 ```
 
+### Upgrade
+
+```bash
+kubectl pg-tunnel upgrade
+```
+
+Upgrades to the latest version from GitHub. Your configuration will be preserved.
+
+### Uninstall
+
+```bash
+kubectl pg-tunnel uninstall
+```
+
+Uninstalls kubectl-pg-tunnel. You'll be prompted whether to remove configuration files.
+
 ## Examples
 
 ### Connect with psql

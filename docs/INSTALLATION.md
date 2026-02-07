@@ -281,7 +281,25 @@ Press Ctrl+C in the first terminal to stop the tunnel.
 
 ## Uninstallation
 
-### Quick Uninstall
+### Method 1: Using the uninstall command (Recommended)
+
+```bash
+kubectl pg-tunnel uninstall
+```
+
+This command will:
+- Download and run the uninstaller
+- Prompt you to remove the plugin binary
+- Ask if you want to remove configuration files
+- Optionally clean up any running jump pods
+
+### Method 2: Direct uninstall script
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/uninstall.sh | bash
+```
+
+### Method 3: From cloned repository
 
 ```bash
 # If installed from the repository
@@ -289,7 +307,7 @@ cd kubectl-pg-tunnel
 ./uninstall.sh
 ```
 
-### Manual Uninstall
+### Method 4: Manual Uninstall
 
 ```bash
 # Remove the plugin

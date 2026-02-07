@@ -61,6 +61,22 @@ curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/instal
 
 The installer will backup your existing installation and preserve your configuration.
 
+### Uninstall
+
+To uninstall kubectl-pg-tunnel:
+
+```bash
+kubectl pg-tunnel uninstall
+```
+
+Or run the uninstall script directly:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/uninstall.sh | bash
+```
+
+The uninstaller will prompt you whether to remove your configuration files.
+
 ### Configure
 
 ```bash

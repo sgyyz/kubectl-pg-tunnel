@@ -301,6 +301,13 @@ EOSCRIPT
     [[ "$output" =~ "Upgrade to the latest version" ]]
 }
 
+@test "uninstall subcommand shows in help" {
+    run_plugin --help
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "uninstall" ]]
+    [[ "$output" =~ "Uninstall kubectl-pg-tunnel" ]]
+}
+
 # ==============================================================================
 # Validation Tests
 # ==============================================================================
