@@ -1,0 +1,62 @@
+# Editor files
+*.swp
+*.swo
+*~
+.*.swp
+.*.swo
+*.bak
+
+# IDE directories
+.vscode/
+.idea/
+*.iml
+.project
+.settings/
+.classpath
+
+# Claude Code
+.claude/
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Test artifacts
+*.log
+.bats/
+test-results/
+
+# Local configuration (don't commit real configs)
+pg-tunnel.conf
+config/pg-tunnel.conf
+*.local.conf
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+dist/
+build/
+
+# Backup files
+*.backup
+*.backup.*
+
+# Coverage reports
+coverage/
+.coverage
+
+# Node modules (if adding any tooling)
+node_modules/
+
+# Python cache (if adding any tooling)
+__pycache__/
+*.py[cod]
+*$py.class

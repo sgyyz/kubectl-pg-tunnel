@@ -1,0 +1,15 @@
+# shellcheck configuration for kubectl-pg-tunnel
+
+# Disable specific rules if needed
+# SC1090: Can't follow non-constant source
+# SC1091: Not following sourced files
+disable=SC1090,SC1091
+
+# Set shell directive
+shell=bash
+
+# Severity level (error, warning, info, style)
+severity=style
+
+# Enable all optional checks
+enable=all

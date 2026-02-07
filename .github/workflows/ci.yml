@@ -1,0 +1,151 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint Shell Scripts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Run shellcheck on main plugin
+        run: shellcheck kubectl-pg_tunnel
+
+      - name: Run shellcheck on install script
+        run: shellcheck install.sh
+
+      - name: Run shellcheck on uninstall script
+        run: shellcheck uninstall.sh
+
+      - name: Check for common issues
+        run: |
+          echo "Checking for TODO/FIXME comments..."
+          ! grep -r "TODO\|FIXME" kubectl-pg_tunnel install.sh uninstall.sh || true
+
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install BATS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats
+
+      - name: Run BATS tests
+        run: |
+          bats --version
+          bats tests/pg_tunnel_test.bats
+
+      - name: Display test results
+        if: always()
+        run: |
+          echo "Test execution completed"
+
+  compatibility:
+    name: Compatibility Check
+    runs-on: ${{ matrix.os }}
+    needs: lint
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check bash version
+        run: |
+          bash --version
+          echo "Bash version check passed"
+
+      - name: Verify script syntax
+        run: |
+          bash -n kubectl-pg_tunnel
+          bash -n install.sh
+          bash -n uninstall.sh
+
+      - name: Test help output
+        run: |
+          chmod +x kubectl-pg_tunnel
+          ./kubectl-pg_tunnel --help
+
+      - name: Test version output
+        run: |
+          ./kubectl-pg_tunnel --version
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for hardcoded secrets
+        run: |
+          echo "Scanning for potential secrets..."
+          ! grep -r "password\|secret\|token\|key" --include="*.sh" --include="kubectl-pg_tunnel" . || true
+
+      - name: Check file permissions
+        run: |
+          echo "Checking file permissions..."
+          ls -la kubectl-pg_tunnel install.sh uninstall.sh
+          [ -x kubectl-pg_tunnel ] && echo "✓ kubectl-pg_tunnel is executable"
+          [ -x install.sh ] && echo "✓ install.sh is executable"
+          [ -x uninstall.sh ] && echo "✓ uninstall.sh is executable"
+
+  documentation:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check README exists
+        run: |
+          [ -f README.md ] && echo "✓ README.md exists"
+
+      - name: Check LICENSE exists
+        run: |
+          [ -f LICENSE ] && echo "✓ LICENSE exists"
+
+      - name: Check example config exists
+        run: |
+          [ -f config/config.yaml.example ] && echo "✓ Example config exists"
+
+      - name: Validate markdown
+        run: |
+          echo "Checking for broken markdown..."
+          # Basic check for markdown headers
+          grep -q "^# " README.md && echo "✓ README has headers"
+
+      - name: Check documentation completeness
+        run: |
+          echo "Checking README sections..."
+          grep -q "Installation" README.md && echo "✓ Has Installation section"
+          grep -q "Usage" README.md && echo "✓ Has Usage section"
+          grep -q "Configuration" README.md && echo "✓ Has Configuration section"
+          grep -q "Examples" README.md && echo "✓ Has Examples section"

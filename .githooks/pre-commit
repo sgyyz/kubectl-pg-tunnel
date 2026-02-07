@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+# Pre-commit hook for kubectl-pg-tunnel
+# Runs shellcheck on all modified shell scripts
+
+set -e
+
+echo "Running pre-commit checks..."
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+# Check if shellcheck is installed
+if ! command -v shellcheck &>/dev/null; then
+    echo -e "${YELLOW}Warning: shellcheck not found${NC}"
+    echo "Install with: brew install shellcheck"
+    echo "Skipping shellcheck..."
+    exit 0
+fi
+
+# Get list of staged shell scripts
+FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(sh|bash)$|^kubectl-pg_tunnel$' || true)
+
+if [ -z "$FILES" ]; then
+    echo -e "${GREEN}✓ No shell scripts to check${NC}"
+    exit 0
+fi
+
+echo "Checking shell scripts with shellcheck..."
+FAILED=0
+
+for FILE in $FILES; do
+    if [ -f "$FILE" ]; then
+        echo "  → $FILE"
+        if ! shellcheck "$FILE"; then
+            echo -e "${RED}✗ shellcheck failed for $FILE${NC}"
+            FAILED=1
+        fi
+    fi
+done
+
+if [ $FAILED -eq 1 ]; then
+    echo ""
+    echo -e "${RED}✗ Pre-commit checks failed${NC}"
+    echo "Fix the shellcheck errors or run: git commit --no-verify (not recommended)"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ All pre-commit checks passed${NC}"
+exit 0
