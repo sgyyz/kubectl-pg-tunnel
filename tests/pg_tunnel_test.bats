@@ -294,6 +294,13 @@ EOSCRIPT
     [ "$status" -eq 0 ]
 }
 
+@test "upgrade subcommand shows in help" {
+    run_plugin --help
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "upgrade" ]]
+    [[ "$output" =~ "Upgrade to the latest version" ]]
+}
+
 # ==============================================================================
 # Validation Tests
 # ==============================================================================
@@ -424,6 +431,46 @@ EOSCRIPT
 
 @test "supports --local-port flag" {
     run_plugin --env staging --db user-db --local-port 5433 --help
+    [ "$status" -eq 0 ]
+}
+
+@test "reads local-port from config file when flag not provided" {
+    # Create config with custom local-port
+    cat > "${CONFIG_FILE}" <<EOF
+settings:
+  namespace: default
+  local-port: 15432
+  db-port: 5432
+
+environments:
+  staging:
+    k8s-context: staging-context
+    databases:
+      user-db: postgres-staging.example.com
+EOF
+
+    # Run plugin and check that it reads local-port from config
+    run_plugin --env staging --db user-db --help
+    [ "$status" -eq 0 ]
+}
+
+@test "--local-port flag overrides config file setting" {
+    # Create config with local-port: 15432
+    cat > "${CONFIG_FILE}" <<EOF
+settings:
+  namespace: default
+  local-port: 15432
+  db-port: 5432
+
+environments:
+  staging:
+    k8s-context: staging-context
+    databases:
+      user-db: postgres-staging.example.com
+EOF
+
+    # Flag should override config
+    run_plugin --env staging --db user-db --local-port 9999 --help
     [ "$status" -eq 0 ]
 }
 

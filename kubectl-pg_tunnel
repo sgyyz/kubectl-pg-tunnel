@@ -80,6 +80,7 @@ SUBCOMMANDS:
     ls [environment]       List available environments and databases
                            Optionally filter by environment
     edit-config            Open configuration file in \$EDITOR
+    upgrade                Upgrade to the latest version
     help                   Show this help message
     version                Show version information
 
@@ -288,6 +289,44 @@ EOF
     "${editor}" "${CONFIG_FILE}"
 }
 
+# Upgrade function
+upgrade_plugin() {
+    print_info "Upgrading kubectl-pg-tunnel..."
+    echo ""
+
+    # Check if we have curl or wget
+    if command -v curl >/dev/null 2>&1; then
+        print_info "Downloading and running installer..."
+        if curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/install.sh | bash; then
+            echo ""
+            print_success "Upgrade completed successfully!"
+            echo ""
+            print_info "Your configuration has been preserved at: ${CONFIG_FILE}"
+        else
+            print_error "Upgrade failed"
+            exit 1
+        fi
+    elif command -v wget >/dev/null 2>&1; then
+        print_info "Downloading and running installer..."
+        if wget -qO- https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/install.sh | bash; then
+            echo ""
+            print_success "Upgrade completed successfully!"
+            echo ""
+            print_info "Your configuration has been preserved at: ${CONFIG_FILE}"
+        else
+            print_error "Upgrade failed"
+            exit 1
+        fi
+    else
+        print_error "Neither curl nor wget found"
+        echo ""
+        echo "Please install curl or wget and try again:"
+        echo "  macOS:  brew install curl"
+        echo "  Linux:  sudo apt-get install curl"
+        exit 1
+    fi
+}
+
 # Cleanup function
 cleanup() {
     local pod_name="$1"
@@ -434,7 +473,7 @@ main() {
     # Parse arguments
     local environment=""
     local database=""
-    local local_port="${DEFAULT_LOCAL_PORT}"
+    local local_port=""
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -457,6 +496,10 @@ main() {
                 ;;
             edit-config)
                 edit_config
+                exit 0
+                ;;
+            upgrade)
+                upgrade_plugin
                 exit 0
                 ;;
             --env)
@@ -515,6 +558,12 @@ main() {
         echo ""
         echo "Use '${SCRIPT_NAME} ls ${environment}' to see available databases"
         exit 1
+    fi
+
+    # If local_port not specified via flag, read from config or use default
+    if [[ -z "${local_port}" ]]; then
+        load_config
+        local_port=$(get_setting "local-port" "${DEFAULT_LOCAL_PORT}")
     fi
 
     # Create the tunnel
