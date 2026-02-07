@@ -100,90 +100,10 @@ sudo apt-get install kubectl kubectx yq
 
 ## Documentation
 
-- **[Installation Guide](docs/INSTALLATION.md)** - Detailed installation instructions
-- **[Usage Guide](docs/USAGE.md)** - Complete usage documentation with examples
+- **[Installation Guide](docs/INSTALLATION.md)** - Detailed installation instructions and setup
+- **[Usage Guide](docs/USAGE.md)** - Complete usage documentation, commands, and examples
 - **[Development Guide](docs/DEVELOPMENT.md)** - Contributing and development setup
 - **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute
-
-## Usage Examples
-
-### Basic Tunnel
-
-```bash
-# Connect to database
-kubectl pg-tunnel --env staging --db user-db
-```
-
-### Custom Local Port
-
-```bash
-# Use different local port
-kubectl pg-tunnel --env production --db order-db --local-port 5433
-```
-
-### List Resources
-
-```bash
-# List all environments and databases
-kubectl pg-tunnel ls
-
-# List databases for specific environment
-kubectl pg-tunnel ls staging
-```
-
-### With psql
-
-```bash
-# Terminal 1: Create tunnel
-kubectl pg-tunnel --env staging --db user-db
-
-# Terminal 2: Connect
-psql -h localhost -p 5432 -U myuser mydatabase
-```
-
-### With GUI Tools
-
-```bash
-# Create tunnel
-kubectl pg-tunnel --env production --db user-db
-
-# Configure TablePlus/Postico/pgAdmin:
-# Host: localhost
-# Port: 5432
-# User: your-username
-# Database: your-database
-```
-
-## Commands
-
-```bash
-kubectl pg-tunnel --env <environment> --db <database>  # Create tunnel
-kubectl pg-tunnel ls [environment]                      # List resources
-kubectl pg-tunnel edit-config                           # Edit config
-kubectl pg-tunnel --help                                # Show help
-kubectl pg-tunnel --version                             # Show version
-```
-
-## Configuration
-
-Configuration file: `~/.config/kubectl-pg-tunnel/config.yaml`
-
-```yaml
-settings:
-  namespace: default                    # Kubernetes namespace
-  jump-pod-image: alpine/socat:latest   # Jump pod image
-  jump-pod-wait-timeout: 60             # Pod ready timeout
-  local-port: 5432                      # Local port
-  db-port: 5432                         # Remote PostgreSQL port
-
-environments:
-  <environment-name>:
-    k8s-context: <kubectl-context>      # Kubernetes context
-    databases:
-      <alias>: <hostname>               # Database hostname
-```
-
-See [USAGE.md](docs/USAGE.md#configuration) for detailed configuration options.
 
 ## Security
 
@@ -193,67 +113,21 @@ See [USAGE.md](docs/USAGE.md#configuration) for detailed configuration options.
 - **Network policies** - Respects your cluster's network policies
 - **Audit trail** - All operations logged in Kubernetes audit logs
 
-## Development
+## Contributing
 
-### Quick Setup
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+For development setup:
 
 ```bash
 git clone https://github.com/sgyyz/kubectl-pg-tunnel.git
 cd kubectl-pg-tunnel
-
-# Install dependencies and set up hooks
-make dev-setup
-make setup-hooks
-
-# Run checks before committing
-make check
+make dev-setup      # Install dependencies
+make setup-hooks    # Set up pre-commit hooks
+make check          # Run all checks
 ```
 
-### Available Commands
-
-```bash
-make help        # Show all commands
-make dev-setup   # Install dependencies (shellcheck, bats, yq)
-make setup-hooks # Set up pre-commit hooks
-make lint        # Run shellcheck
-make test        # Run BATS tests
-make check       # Run all checks (before pushing!)
-```
-
-See [DEVELOPMENT.md](docs/DEVELOPMENT.md) for detailed development documentation.
-
-## Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-### Quick Contribution Guide
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run `make check` to ensure tests pass
-5. Submit a pull request
-
-## Troubleshooting
-
-### Common Issues
-
-**yq not found**
-```bash
-brew install yq  # macOS
-```
-
-**Context switch fails**
-```bash
-kubectl config get-contexts  # Verify context name
-```
-
-**Port already in use**
-```bash
-kubectl pg-tunnel --env staging --db user-db --local-port 5433
-```
-
-See [USAGE.md](docs/USAGE.md#troubleshooting) for comprehensive troubleshooting.
+See [DEVELOPMENT.md](docs/DEVELOPMENT.md) for detailed documentation.
 
 ## License
 

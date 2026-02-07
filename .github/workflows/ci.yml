@@ -145,7 +145,24 @@ jobs:
       - name: Check documentation completeness
         run: |
           echo "Checking README sections..."
-          grep -q "Installation" README.md && echo "✓ Has Installation section"
-          grep -q "Usage" README.md && echo "✓ Has Usage section"
-          grep -q "Configuration" README.md && echo "✓ Has Configuration section"
-          grep -q "Examples" README.md && echo "✓ Has Examples section"
+          grep -q "Quick Start" README.md && echo "✓ README has Quick Start"
+          grep -q "Documentation" README.md && echo "✓ README has Documentation links"
+          grep -q "Requirements" README.md && echo "✓ README has Requirements"
+
+      - name: Check docs folder exists
+        run: |
+          [ -d docs ] && echo "✓ docs/ directory exists"
+
+      - name: Check documentation files
+        run: |
+          echo "Checking documentation files..."
+          [ -f docs/INSTALLATION.md ] && echo "✓ INSTALLATION.md exists"
+          [ -f docs/USAGE.md ] && echo "✓ USAGE.md exists"
+          [ -f docs/DEVELOPMENT.md ] && echo "✓ DEVELOPMENT.md exists"
+
+      - name: Check docs content
+        run: |
+          echo "Checking docs content..."
+          grep -q "Installation" docs/INSTALLATION.md && echo "✓ INSTALLATION.md has content"
+          grep -q "Usage" docs/USAGE.md && echo "✓ USAGE.md has content"
+          grep -q "Development" docs/DEVELOPMENT.md && echo "✓ DEVELOPMENT.md has content"
