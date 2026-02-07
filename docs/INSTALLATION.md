@@ -43,6 +43,12 @@ Download and run the installation script:
 curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/install.sh | bash
 ```
 
+This will:
+- Download the plugin directly from GitHub
+- Install it to your kubectl plugins directory
+- Set up the configuration directory
+- Download the example configuration file
+
 ### Method 2: Manual Installation
 
 #### Step 1: Install Dependencies
