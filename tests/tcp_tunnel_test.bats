@@ -285,6 +285,39 @@ run_plugin() {
     [[ "$output" =~ "requires a port argument" ]]
 }
 
+@test "errors on -e without argument" {
+    run_plugin -e
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "requires an environment argument" ]]
+}
+
+@test "errors on -c without argument" {
+    run_plugin -c
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "requires a" ]]
+}
+
+@test "errors on -p without argument" {
+    run_plugin -p
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "requires a port argument" ]]
+}
+
+@test "accepts short arguments -e and -c" {
+    run_plugin -e staging -c user-db --help
+    [ "$status" -eq 0 ]
+}
+
+@test "accepts mixed short and long arguments" {
+    run_plugin -e staging --connection user-db --help
+    [ "$status" -eq 0 ]
+}
+
+@test "accepts short argument -p for local-port" {
+    run_plugin -e staging -c user-db -p 5433 --help
+    [ "$status" -eq 0 ]
+}
+
 # ==============================================================================
 # Config Handling Tests
 # ==============================================================================
@@ -380,13 +413,13 @@ EOSCRIPT
 @test "errors when missing --env argument" {
     run_plugin --connection user-db
     [ "$status" -eq 1 ]
-    [[ "$output" =~ "Missing required option: --env" ]]
+    [[ "$output" =~ "Missing required option: -e/--env" ]]
 }
 
 @test "errors when missing --connection argument" {
     run_plugin --env staging
     [ "$status" -eq 1 ]
-    [[ "$output" =~ "Missing required option: --connection" ]]
+    [[ "$output" =~ "Missing required option: -c/--connection" ]]
 }
 
 @test "errors on invalid environment" {

@@ -16,17 +16,18 @@ Comprehensive guide for using kubectl-tcp-tunnel for any TCP service.
 ### Command Syntax
 
 ```bash
+kubectl tcp-tunnel -e <environment> -c <connection> [OPTIONS]
 kubectl tcp-tunnel --env <environment> --connection <connection> [OPTIONS]
 ```
 
 ### Required Flags
 
-- `--env <environment>` - Environment to use (staging, production, etc.)
-- `--connection <connection>` - Connection alias to use (supports any TCP service)
+- `-e, --env <environment>` - Environment to use (staging, production, etc.)
+- `-c, --connection <connection>` - Connection alias to use (supports any TCP service)
 
 ### Optional Flags
 
-- `--local-port <port>` - Local port to forward to (overrides connection type default)
+- `-p, --local-port <port>` - Local port to forward to (overrides connection type default)
 - `--help` - Show help message
 - `--version` - Show version information
 
@@ -162,14 +163,14 @@ environments:
 ### Create a Tunnel
 
 ```bash
-# Connect to staging user database
-kubectl tcp-tunnel --env staging --connection user-db
+# Connect to staging user database (short form)
+kubectl tcp-tunnel -e staging -c user-db
 
-# Connect to production order database
+# Connect to production order database (long form)
 kubectl tcp-tunnel --env production --connection order-db
 
-# Use custom local port
-kubectl tcp-tunnel --env staging --connection user-db --local-port 5433
+# Use custom local port (short form)
+kubectl tcp-tunnel -e staging -c user-db -p 5433
 ```
 
 When the tunnel is established, you'll see:
@@ -255,8 +256,8 @@ Uninstalls kubectl-tcp-tunnel. You'll be prompted whether to remove configuratio
 ### Connect to PostgreSQL
 
 ```bash
-# Terminal 1: Create tunnel
-kubectl tcp-tunnel --env staging --connection user-db
+# Terminal 1: Create tunnel (short form)
+kubectl tcp-tunnel -e staging -c user-db
 
 # Terminal 2: Connect with psql
 psql -h localhost -p 15432 -U myuser mydatabase
@@ -265,8 +266,8 @@ psql -h localhost -p 15432 -U myuser mydatabase
 ### Connect to MySQL
 
 ```bash
-# Terminal 1: Create tunnel
-kubectl tcp-tunnel --env staging --connection order-db
+# Terminal 1: Create tunnel (short form)
+kubectl tcp-tunnel -e staging -c order-db
 
 # Terminal 2: Connect with mysql
 mysql -h localhost -P 13306 -u myuser mydatabase
@@ -275,8 +276,8 @@ mysql -h localhost -P 13306 -u myuser mydatabase
 ### Connect to Redis
 
 ```bash
-# Terminal 1: Create tunnel
-kubectl tcp-tunnel --env staging --connection cache
+# Terminal 1: Create tunnel (short form)
+kubectl tcp-tunnel -e staging -c cache
 
 # Terminal 2: Connect with redis-cli
 redis-cli -h localhost -p 16379
@@ -285,8 +286,8 @@ redis-cli -h localhost -p 16379
 ### Connect to MongoDB
 
 ```bash
-# Terminal 1: Create tunnel
-kubectl tcp-tunnel --env staging --connection mongo-db
+# Terminal 1: Create tunnel (short form)
+kubectl tcp-tunnel -e staging -c mongo-db
 
 # Terminal 2: Connect with mongosh
 mongosh "mongodb://localhost:17017/mydatabase"

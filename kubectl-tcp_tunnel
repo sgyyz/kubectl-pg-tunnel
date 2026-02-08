@@ -63,6 +63,7 @@ show_help() {
 ${SCRIPT_NAME} - Create TCP tunnels through Kubernetes jump pods
 
 USAGE:
+    ${SCRIPT_NAME} -e <environment> -c <connection> [OPTIONS]
     ${SCRIPT_NAME} --env <environment> --connection <connection> [OPTIONS]
     ${SCRIPT_NAME} <SUBCOMMAND>
 
@@ -72,11 +73,11 @@ DESCRIPTION:
     It simplifies secure service access without exposing services directly.
 
 OPTIONS:
-    --env <environment>       Environment to use (e.g., staging, production)
-    --connection <connection> Connection alias to use (supports any TCP service)
-    --local-port <port>       Local port to forward to (overrides connection type default)
-    --help                    Show this help message
-    --version                 Show version information
+    -e, --env <environment>       Environment to use (e.g., staging, production)
+    -c, --connection <connection> Connection alias to use (supports any TCP service)
+    -p, --local-port <port>       Local port to forward to (overrides connection type default)
+    --help                        Show this help message
+    --version                     Show version information
 
 SUBCOMMANDS:
     ls [environment]       List available environments and connections
@@ -90,12 +91,14 @@ SUBCOMMANDS:
 EXAMPLES:
     # Create tunnel to staging PostgreSQL database
     ${SCRIPT_NAME} --env staging --connection user-db
+    ${SCRIPT_NAME} -e staging -c user-db
 
     # Create tunnel to production MySQL with custom local port
     ${SCRIPT_NAME} --env production --connection order-db --local-port 3307
+    ${SCRIPT_NAME} -e production -c order-db -p 3307
 
     # Create tunnel to Redis cache
-    ${SCRIPT_NAME} --env staging --connection cache
+    ${SCRIPT_NAME} -e staging -c cache
 
     # List all available environments and connections
     ${SCRIPT_NAME} ls
@@ -679,25 +682,25 @@ main() {
                 uninstall_plugin
                 exit 0
                 ;;
-            --env)
+            --env|-e)
                 if [[ $# -lt 2 ]]; then
-                    print_error "Option --env requires an environment argument"
+                    print_error "Option --env/-e requires an environment argument"
                     exit 1
                 fi
                 environment="$2"
                 shift 2
                 ;;
-            --connection)
+            --connection|-c)
                 if [[ $# -lt 2 ]]; then
-                    print_error "Option --connection requires a connection argument"
+                    print_error "Option --connection/-c requires a connection argument"
                     exit 1
                 fi
                 database="$2"
                 shift 2
                 ;;
-            --local-port)
+            --local-port|-p)
                 if [[ $# -lt 2 ]]; then
-                    print_error "Option --local-port requires a port argument"
+                    print_error "Option --local-port/-p requires a port argument"
                     exit 1
                 fi
                 local_port="$2"
@@ -720,18 +723,20 @@ main() {
 
     # Validate required arguments for tunnel creation
     if [[ -z "${environment}" ]]; then
-        print_error "Missing required option: --env <environment>"
+        print_error "Missing required option: -e/--env <environment>"
         echo ""
-        echo "Usage: ${SCRIPT_NAME} --env <environment> --connection <connection>"
+        echo "Usage: ${SCRIPT_NAME} -e <environment> -c <connection>"
+        echo "   or: ${SCRIPT_NAME} --env <environment> --connection <connection>"
         echo ""
         echo "Use '${SCRIPT_NAME} ls' to see available environments"
         exit 1
     fi
 
     if [[ -z "${database}" ]]; then
-        print_error "Missing required option: --connection <connection>"
+        print_error "Missing required option: -c/--connection <connection>"
         echo ""
-        echo "Usage: ${SCRIPT_NAME} --env <environment> --connection <connection>"
+        echo "Usage: ${SCRIPT_NAME} -e <environment> -c <connection>"
+        echo "   or: ${SCRIPT_NAME} --env <environment> --connection <connection>"
         echo ""
         echo "Use '${SCRIPT_NAME} ls ${environment}' to see available connections"
         exit 1
