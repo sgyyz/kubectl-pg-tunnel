@@ -201,7 +201,7 @@ fi
 
 ### BATS Tests
 
-Tests are located in `tests/pg_tunnel_test.bats`.
+Tests are located in `tests/tcp_tunnel_test.bats`.
 
 #### Running Tests
 
@@ -210,10 +210,10 @@ Tests are located in `tests/pg_tunnel_test.bats`.
 make test
 
 # Run with BATS directly
-bats tests/pg_tunnel_test.bats
+bats tests/tcp_tunnel_test.bats
 
 # Run specific test
-bats tests/pg_tunnel_test.bats -f "shows help"
+bats tests/tcp_tunnel_test.bats -f "shows help"
 ```
 
 #### Writing Tests

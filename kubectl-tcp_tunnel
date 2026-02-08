@@ -258,6 +258,33 @@ get_connection_db_port() {
     yq eval "explode(.) | .environments.${env}.connections.${conn}.type.db-port // \"\"" "${CONFIG_FILE}" 2>/dev/null
 }
 
+# Generate random alphanumeric string (lowercase)
+generate_random_suffix() {
+    local length="${1:-6}"
+    local suffix
+    # Try to generate random suffix from /dev/urandom
+    suffix=$(LC_ALL=C tr -dc 'a-z0-9' < /dev/urandom 2>/dev/null | head -c "${length}" || true)
+
+    # Fallback to timestamp-based generation if urandom fails
+    if [[ -z "${suffix}" ]] || [[ ${#suffix} -ne ${length} ]]; then
+        local timestamp
+        timestamp=$(date +%s)
+        suffix=$(printf "%s" "${timestamp}" | sha256sum 2>/dev/null | head -c "${length}" || printf "%s" "${timestamp}" | head -c "${length}")
+    fi
+
+    echo "${suffix}"
+}
+
+# Get connection type name from config
+get_connection_type() {
+    local env="$1"
+    local conn="$2"
+    # Extract the type anchor name (e.g., *postgres -> postgres)
+    local type_ref
+    type_ref=$(yq eval ".environments.${env}.connections.${conn}.type" "${CONFIG_FILE}" 2>/dev/null | grep -o '\*[a-z0-9_-]*' | sed 's/^\*//' || echo "")
+    echo "${type_ref}"
+}
+
 # Sanitize hostname to valid Kubernetes pod name
 # Pod names must be lowercase alphanumeric with hyphens
 sanitize_pod_name() {
@@ -330,7 +357,7 @@ edit_config() {
 
             # Create a basic config template
             cat > "${CONFIG_FILE}" <<'EOF'
-# kubectl-pg-tunnel configuration
+# kubectl-tcp-tunnel configuration
 
 settings:
   namespace: default
@@ -383,14 +410,14 @@ EOF
 
 # Upgrade function
 upgrade_plugin() {
-    print_info "Upgrading kubectl-pg-tunnel..."
+    print_info "Upgrading kubectl-tcp-tunnel..."
     echo ""
 
     # Check if we have curl or wget
     if command -v curl >/dev/null 2>&1; then
         print_info "Downloading and running installer..."
         # shellcheck disable=SC2312
-        if FORCE_INSTALL=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/install.sh)"; then
+        if FORCE_INSTALL=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-tcp-tunnel/main/install.sh)"; then
             echo ""
             print_success "Upgrade completed successfully!"
             echo ""
@@ -402,7 +429,7 @@ upgrade_plugin() {
     elif command -v wget >/dev/null 2>&1; then
         print_info "Downloading and running installer..."
         # shellcheck disable=SC2312
-        if FORCE_INSTALL=1 bash -c "$(wget -qO- https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/install.sh)"; then
+        if FORCE_INSTALL=1 bash -c "$(wget -qO- https://raw.githubusercontent.com/sgyyz/kubectl-tcp-tunnel/main/install.sh)"; then
             echo ""
             print_success "Upgrade completed successfully!"
             echo ""
@@ -423,13 +450,13 @@ upgrade_plugin() {
 
 # Uninstall function
 uninstall_plugin() {
-    print_info "Uninstalling kubectl-pg-tunnel..."
+    print_info "Uninstalling kubectl-tcp-tunnel..."
     echo ""
 
     # Check if we have curl or wget
     if command -v curl >/dev/null 2>&1; then
         print_info "Downloading and running uninstaller..."
-        if curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/uninstall.sh | bash; then
+        if curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-tcp-tunnel/main/uninstall.sh | bash; then
             echo ""
             print_success "Uninstall completed!"
         else
@@ -438,7 +465,7 @@ uninstall_plugin() {
         fi
     elif command -v wget >/dev/null 2>&1; then
         print_info "Downloading and running uninstaller..."
-        if wget -qO- https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/uninstall.sh | bash; then
+        if wget -qO- https://raw.githubusercontent.com/sgyyz/kubectl-tcp-tunnel/main/uninstall.sh | bash; then
             echo ""
             print_success "Uninstall completed!"
         else
@@ -524,10 +551,21 @@ create_tunnel() {
         exit 1
     fi
 
-    # Generate pod name
-    local sanitized_db
-    sanitized_db=$(sanitize_pod_name "${database}")
-    local pod_name="pg-jump-${sanitized_db}"
+    # Generate pod name with connection type prefix and random suffix
+    local connection_type
+    connection_type=$(get_connection_type "${environment}" "${database}")
+
+    local random_suffix
+    random_suffix=$(generate_random_suffix 6)
+
+    local pod_name
+    if [[ -n "${connection_type}" ]] && [[ "${connection_type}" != "null" ]]; then
+        # Use connection type as prefix (e.g., postgres-tunnel-a1b2c3)
+        pod_name="${connection_type}-tunnel-${random_suffix}"
+    else
+        # Fallback to generic name (e.g., tcp-tunnel-a1b2c3)
+        pod_name="tcp-tunnel-${random_suffix}"
+    fi
 
     print_info "Environment: ${environment}"
     print_info "Context: ${context}"

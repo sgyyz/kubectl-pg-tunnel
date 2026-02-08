@@ -1,4 +1,4 @@
-# shellcheck configuration for kubectl-pg-tunnel
+# shellcheck configuration for kubectl-tcp-tunnel
 
 # Disable specific rules if needed
 # SC1090: Can't follow non-constant source

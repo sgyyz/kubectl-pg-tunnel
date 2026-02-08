@@ -1,5 +1,5 @@
-# kubectl-pg-tunnel Configuration File
-# Copy this file to ~/.config/kubectl-pg-tunnel/config.yaml and customize
+# kubectl-tcp-tunnel Configuration File
+# Copy this file to ~/.config/kubectl-tcp-tunnel/config.yaml and customize
 
 # ==============================================================================
 # GLOBAL SETTINGS
@@ -115,22 +115,22 @@ environments:
 # Once configured, use the plugin like this:
 #
 #   # Connect to staging user database (PostgreSQL)
-#   kubectl pg-tunnel --env staging --db user-db
+#   kubectl tcp-tunnel --env staging --db user-db
 #
 #   # Connect to production analytics database (PostgreSQL)
-#   kubectl pg-tunnel --env production --db analytics-db
+#   kubectl tcp-tunnel --env production --db analytics-db
 #
 #   # Connect to Redis cache
-#   kubectl pg-tunnel --env staging --db cache
+#   kubectl tcp-tunnel --env staging --db cache
 #
 #   # Connect with custom local port (overrides type definition)
-#   kubectl pg-tunnel --env staging --db order-db --local-port 3307
+#   kubectl tcp-tunnel --env staging --db order-db --local-port 3307
 #
 #   # List all environments and connections
-#   kubectl pg-tunnel ls
+#   kubectl tcp-tunnel ls
 #
 #   # List connections for staging environment
-#   kubectl pg-tunnel ls staging
+#   kubectl tcp-tunnel ls staging
 #
 # ==============================================================================
 # CUSTOMIZATION NOTES
