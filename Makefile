@@ -38,6 +38,7 @@ lint:
 		shellcheck kubectl-tcp_tunnel && \
 		shellcheck install.sh && \
 		shellcheck uninstall.sh && \
+		shellcheck dev-setup.sh && \
 		echo "✓ All shellcheck tests passed!"; \
 	else \
 		echo "Error: shellcheck not found. Install with: brew install shellcheck"; \
