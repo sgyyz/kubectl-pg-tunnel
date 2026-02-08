@@ -4,7 +4,7 @@ set -euo pipefail
 
 # kubectl-pg-tunnel Installation Script
 
-VERSION="1.0.1"
+VERSION="1.0.2"
 PLUGIN_NAME="kubectl-pg_tunnel"
 CONFIG_DIR="${HOME}/.config/kubectl-pg-tunnel"
 CONFIG_FILE="${CONFIG_DIR}/config.yaml"
