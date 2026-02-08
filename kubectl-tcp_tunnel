@@ -258,6 +258,22 @@ get_connection_db_port() {
     yq eval "explode(.) | .environments.${env}.connections.${conn}.type.db-port // \"\"" "${CONFIG_FILE}" 2>/dev/null
 }
 
+# Generate random alphanumeric string (lowercase)
+generate_random_suffix() {
+    local length="${1:-6}"
+    LC_ALL=C tr -dc 'a-z0-9' < /dev/urandom | head -c "${length}" || echo "$(date +%s | sha256sum | head -c "${length}")"
+}
+
+# Get connection type name from config
+get_connection_type() {
+    local env="$1"
+    local conn="$2"
+    # Extract the type anchor name (e.g., *postgres -> postgres)
+    local type_ref
+    type_ref=$(yq eval ".environments.${env}.connections.${conn}.type" "${CONFIG_FILE}" 2>/dev/null | grep -o '\*[a-z0-9_-]*' | sed 's/^\*//' || echo "")
+    echo "${type_ref}"
+}
+
 # Sanitize hostname to valid Kubernetes pod name
 # Pod names must be lowercase alphanumeric with hyphens
 sanitize_pod_name() {
@@ -524,10 +540,21 @@ create_tunnel() {
         exit 1
     fi
 
-    # Generate pod name
-    local sanitized_db
-    sanitized_db=$(sanitize_pod_name "${database}")
-    local pod_name="pg-jump-${sanitized_db}"
+    # Generate pod name with connection type prefix and random suffix
+    local connection_type
+    connection_type=$(get_connection_type "${environment}" "${database}")
+
+    local random_suffix
+    random_suffix=$(generate_random_suffix 6)
+
+    local pod_name
+    if [[ -n "${connection_type}" ]] && [[ "${connection_type}" != "null" ]]; then
+        # Use connection type as prefix (e.g., postgres-tunnel-a1b2c3)
+        pod_name="${connection_type}-tunnel-${random_suffix}"
+    else
+        # Fallback to generic name (e.g., tcp-tunnel-a1b2c3)
+        pod_name="tcp-tunnel-${random_suffix}"
+    fi
 
     print_info "Environment: ${environment}"
     print_info "Context: ${context}"
