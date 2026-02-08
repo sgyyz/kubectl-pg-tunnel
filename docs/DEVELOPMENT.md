@@ -1,13 +1,13 @@
 # Development Guide
 
-This guide covers setting up your development environment for kubectl-pg-tunnel.
+This guide covers setting up your development environment for kubectl-tcp-tunnel.
 
 ## Quick Start
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/sgyyz/kubectl-pg-tunnel.git
-cd kubectl-pg-tunnel
+git clone https://github.com/sgyyz/kubectl-tcp-tunnel.git
+cd kubectl-tcp-tunnel
 
 # 2. Install development dependencies
 make dev-setup
@@ -90,8 +90,8 @@ make clean
 make install
 
 # Test the plugin
-kubectl pg-tunnel --help
-kubectl pg-tunnel --version
+kubectl tcp-tunnel --help
+kubectl tcp-tunnel --version
 
 # Uninstall after testing
 make uninstall
@@ -304,8 +304,8 @@ fi
 ## Project Structure
 
 ```
-kubectl-pg-tunnel/
-├── kubectl-pg_tunnel           # Main plugin executable
+kubectl-tcp-tunnel/
+├── kubectl-tcp_tunnel           # Main plugin executable
 ├── install.sh                  # Installation script
 ├── uninstall.sh                # Uninstallation script
 ├── dev-setup.sh                # Development setup script

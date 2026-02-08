@@ -1,13 +1,13 @@
 #!/usr/bin/env bats
 
-# kubectl-pg-tunnel test suite
+# kubectl-tcp-tunnel test suite
 
 setup() {
     # Set up test environment
-    export TEST_DIR="${BATS_TEST_TMPDIR}/kubectl-pg-tunnel-test"
+    export TEST_DIR="${BATS_TEST_TMPDIR}/kubectl-tcp-tunnel-test"
     export CONFIG_DIR="${TEST_DIR}/config"
     export CONFIG_FILE="${CONFIG_DIR}/config.yaml"
-    export PG_TUNNEL_CONFIG="${CONFIG_FILE}"
+    export TCP_TUNNEL_CONFIG="${CONFIG_FILE}"
     export PATH="${TEST_DIR}/bin:${PATH}"
 
     # Create test directories
@@ -20,21 +20,35 @@ settings:
   namespace: test-namespace
   jump-pod-image: alpine/socat:latest
   jump-pod-wait-timeout: 60
-  local-port: 5432
-  db-port: 5432
+
+  postgres: &postgres
+    local-port: 15432
+    db-port: 5432
+
+  mysql: &mysql
+    local-port: 13306
+    db-port: 3306
 
 environments:
   staging:
     k8s-context: staging-cluster
-    databases:
-      user-db: postgres-staging.example.com
-      order-db: order-staging.example.com
+    connections:
+      user-db:
+        host: postgres-staging.example.com
+        type: *postgres
+      order-db:
+        host: order-staging.example.com
+        type: *mysql
 
   production:
     k8s-context: prod-cluster
-    databases:
-      user-db: postgres-prod.example.com
-      order-db: order-prod.example.com
+    connections:
+      user-db:
+        host: postgres-prod.example.com
+        type: *postgres
+      order-db:
+        host: order-prod.example.com
+        type: *mysql
 EOF
 
     # Create mock yq
@@ -60,39 +74,69 @@ case "$query" in
     ".settings.db-port")
         echo "5432"
         ;;
+    ".settings.local-port")
+        echo "5432"
+        ;;
     ".environments.staging.k8s-context")
         echo "staging-cluster"
         ;;
     ".environments.production.k8s-context")
         echo "prod-cluster"
         ;;
-    ".environments.staging.databases.user-db")
+    "explode(.) | .environments.staging.connections.user-db.host")
         echo "postgres-staging.example.com"
         ;;
-    ".environments.staging.databases.order-db")
+    "explode(.) | .environments.staging.connections.order-db.host")
         echo "order-staging.example.com"
         ;;
-    ".environments.production.databases.user-db")
+    "explode(.) | .environments.production.connections.user-db.host")
         echo "postgres-prod.example.com"
         ;;
-    ".environments.production.databases.order-db")
+    "explode(.) | .environments.production.connections.order-db.host")
         echo "order-prod.example.com"
         ;;
-    ".environments.staging.databases.unknown_db")
+    "explode(.) | .environments.staging.connections.user-db.type.local-port")
+        echo "15432"
+        ;;
+    "explode(.) | .environments.staging.connections.user-db.type.db-port")
+        echo "5432"
+        ;;
+    "explode(.) | .environments.staging.connections.order-db.type.local-port")
+        echo "13306"
+        ;;
+    "explode(.) | .environments.staging.connections.order-db.type.db-port")
+        echo "3306"
+        ;;
+    "explode(.) | .environments.production.connections.user-db.type.local-port")
+        echo "15432"
+        ;;
+    "explode(.) | .environments.production.connections.user-db.type.db-port")
+        echo "5432"
+        ;;
+    "explode(.) | .environments.staging.connections.unknown_db.host")
         echo ""
         ;;
-    ".environments.staging.databases.invalid_db")
+    "explode(.) | .environments.staging.connections.invalid_db.host")
+        echo ""
+        ;;
+    "explode(.) | .environments.staging.connections.unknown_db.type.local-port")
+        echo ""
+        ;;
+    "explode(.) | .environments.staging.connections.unknown_db.type.db-port")
+        echo ""
+        ;;
+    "explode(.) | .environments.staging.connections.nonexistent_db.host")
         echo ""
         ;;
     ".environments | keys | .[]")
         echo "production"
         echo "staging"
         ;;
-    ".environments.staging.databases | keys | .[]")
+    ".environments.staging.connections | keys | .[]")
         echo "order-db"
         echo "user-db"
         ;;
-    ".environments.production.databases | keys | .[]")
+    ".environments.production.connections | keys | .[]")
         echo "order-db"
         echo "user-db"
         ;;
@@ -147,7 +191,7 @@ EOSCRIPT
     chmod +x "${TEST_DIR}/bin/kubectx"
 
     # Reference to the actual plugin script
-    PLUGIN="${BATS_TEST_DIRNAME}/../kubectl-pg_tunnel"
+    PLUGIN="${BATS_TEST_DIRNAME}/../kubectl-tcp_tunnel"
 }
 
 teardown() {
@@ -167,7 +211,7 @@ run_plugin() {
 @test "shows help with --help flag" {
     run_plugin --help
     [ "$status" -eq 0 ]
-    [[ "$output" =~ "kubectl pg-tunnel" ]]
+    [[ "$output" =~ "kubectl tcp-tunnel" ]]
     [[ "$output" =~ "USAGE:" ]]
     [[ "$output" =~ "OPTIONS:" ]]
 }
@@ -175,7 +219,7 @@ run_plugin() {
 @test "shows help with help subcommand" {
     run_plugin help
     [ "$status" -eq 0 ]
-    [[ "$output" =~ "kubectl pg-tunnel" ]]
+    [[ "$output" =~ "kubectl tcp-tunnel" ]]
 }
 
 @test "shows version with --version flag" {
@@ -211,7 +255,7 @@ run_plugin() {
 @test "errors on --db without argument" {
     run_plugin --db
     [ "$status" -eq 1 ]
-    [[ "$output" =~ "requires a database argument" ]]
+    [[ "$output" =~ "requires a" ]]
 }
 
 @test "errors on --local-port without argument" {
@@ -231,8 +275,8 @@ run_plugin() {
     [[ "$output" =~ "Configuration file not found" ]]
 }
 
-@test "respects PG_TUNNEL_CONFIG environment variable" {
-    export PG_TUNNEL_CONFIG="${CONFIG_FILE}"
+@test "respects TCP_TUNNEL_CONFIG environment variable" {
+    export TCP_TUNNEL_CONFIG="${CONFIG_FILE}"
     run_plugin ls
     [ "$status" -eq 0 ]
 }
@@ -267,10 +311,10 @@ EOSCRIPT
 # Subcommand Tests
 # ==============================================================================
 
-@test "ls subcommand lists environments and databases" {
+@test "ls subcommand lists environments and connections" {
     run_plugin ls
     [ "$status" -eq 0 ]
-    [[ "$output" =~ "Available environments and databases" ]]
+    [[ "$output" =~ "Available environments and connections" ]]
     [[ "$output" =~ "staging" ]]
     [[ "$output" =~ "production" ]]
 }
@@ -305,7 +349,7 @@ EOSCRIPT
     run_plugin --help
     [ "$status" -eq 0 ]
     [[ "$output" =~ "uninstall" ]]
-    [[ "$output" =~ "Uninstall kubectl-pg-tunnel" ]]
+    [[ "$output" =~ "Uninstall kubectl-tcp-tunnel" ]]
 }
 
 # ==============================================================================
@@ -330,23 +374,23 @@ EOSCRIPT
     [[ "$output" =~ "Unknown environment" ]]
 }
 
-@test "errors on unknown database alias" {
+@test "errors on unknown connection alias" {
     run_plugin --env staging --db unknown_db
     [ "$status" -eq 1 ]
-    [[ "$output" =~ "Unknown database" ]]
+    [[ "$output" =~ "Unknown connection" ]]
 }
 
 # ==============================================================================
 # Pod Name Sanitization Tests
 # ==============================================================================
 
-@test "accepts database names with hyphens" {
+@test "accepts connection names with hyphens" {
     run_plugin ls
     [ "$status" -eq 0 ]
     [[ "$output" =~ "user-db" ]]
 }
 
-@test "lists databases correctly" {
+@test "lists connections correctly" {
     run_plugin ls staging
     [ "$status" -eq 0 ]
     [[ "$output" =~ "user-db" ]]
@@ -362,7 +406,7 @@ EOSCRIPT
     [ "$status" -eq 1 ]
 }
 
-@test "validates database alias exists before creating tunnel" {
+@test "validates connection alias exists before creating tunnel" {
     run_plugin --env staging --db nonexistent_db
     [ "$status" -eq 1 ]
 }
@@ -395,7 +439,7 @@ EOSCRIPT
     run_plugin --help
     [ "$status" -eq 0 ]
     [[ "$output" =~ "ENVIRONMENT VARIABLES:" ]]
-    [[ "$output" =~ "PG_TUNNEL_CONFIG" ]]
+    [[ "$output" =~ "TCP_TUNNEL_CONFIG" ]]
 }
 
 # ==============================================================================
@@ -415,10 +459,10 @@ EOSCRIPT
     [[ "$output" =~ "Available environments" ]]
 }
 
-@test "lists available databases on invalid database" {
+@test "lists available connections on invalid connection" {
     run_plugin --env staging --db invalid_db
     [ "$status" -eq 1 ]
-    [[ "$output" =~ "Available databases" ]]
+    [[ "$output" =~ "Available connections" ]]
 }
 
 # ==============================================================================
@@ -441,42 +485,64 @@ EOSCRIPT
     [ "$status" -eq 0 ]
 }
 
-@test "reads local-port from config file when flag not provided" {
-    # Create config with custom local-port
+@test "reads local-port from connection type when flag not provided" {
+    # Create config with connection type
     cat > "${CONFIG_FILE}" <<EOF
 settings:
   namespace: default
-  local-port: 15432
-  db-port: 5432
+  postgres: &postgres
+    local-port: 15432
+    db-port: 5432
 
 environments:
   staging:
     k8s-context: staging-context
-    databases:
-      user-db: postgres-staging.example.com
+    connections:
+      user-db:
+        host: postgres-staging.example.com
+        type: *postgres
 EOF
 
-    # Run plugin and check that it reads local-port from config
+    # Update mock yq to handle this config
+    cat > "${TEST_DIR}/bin/yq" <<'EOSCRIPT'
+#!/usr/bin/env bash
+query="${2%% //*}"
+case "$query" in
+    ".") exit 0 ;;
+    ".environments.staging.k8s-context") echo "staging-context" ;;
+    "explode(.) | .environments.staging.connections.user-db.host") echo "postgres-staging.example.com" ;;
+    "explode(.) | .environments.staging.connections.user-db.type.local-port") echo "15432" ;;
+    "explode(.) | .environments.staging.connections.user-db.type.db-port") echo "5432" ;;
+    *) echo "" ;;
+esac
+exit 0
+EOSCRIPT
+    chmod +x "${TEST_DIR}/bin/yq"
+
+    # Run plugin and check that it reads local-port from connection type
     run_plugin --env staging --db user-db --help
     [ "$status" -eq 0 ]
 }
 
-@test "--local-port flag overrides config file setting" {
-    # Create config with local-port: 15432
+@test "--local-port flag overrides connection type setting" {
+    # Create config with connection type port
     cat > "${CONFIG_FILE}" <<EOF
 settings:
   namespace: default
-  local-port: 15432
-  db-port: 5432
+  postgres: &postgres
+    local-port: 15432
+    db-port: 5432
 
 environments:
   staging:
     k8s-context: staging-context
-    databases:
-      user-db: postgres-staging.example.com
+    connections:
+      user-db:
+        host: postgres-staging.example.com
+        type: *postgres
 EOF
 
-    # Flag should override config
+    # Flag should override connection type
     run_plugin --env staging --db user-db --local-port 9999 --help
     [ "$status" -eq 0 ]
 }

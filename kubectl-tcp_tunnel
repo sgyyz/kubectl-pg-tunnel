@@ -2,16 +2,16 @@
 
 set -euo pipefail
 
-# kubectl-pg-tunnel - A kubectl plugin for creating PostgreSQL tunnels through jump pods
-# Version: v1.0.0
+# kubectl-tcp-tunnel - A kubectl plugin for creating TCP tunnels through jump pods
+# Version: v2.0.0
 # This placeholder will be replaced during release
 
-VERSION="${KUBECTL_PG_TUNNEL_VERSION:-v1.0.2}"
-SCRIPT_NAME="kubectl pg-tunnel"
-GITHUB_REPO="sgyyz/kubectl-pg-tunnel"
+VERSION="${KUBECTL_TCP_TUNNEL_VERSION:-v2.0.0}"
+SCRIPT_NAME="kubectl tcp-tunnel"
+GITHUB_REPO="sgyyz/kubectl-tcp-tunnel"
 
 # Default configuration path
-CONFIG_FILE="${PG_TUNNEL_CONFIG:-${HOME}/.config/kubectl-pg-tunnel/config.yaml}"
+CONFIG_FILE="${TCP_TUNNEL_CONFIG:-${HOME}/.config/kubectl-tcp-tunnel/config.yaml}"
 
 # Default settings
 DEFAULT_NAMESPACE="default"
@@ -60,44 +60,47 @@ check_yq() {
 # Show help message
 show_help() {
     cat <<EOF
-${SCRIPT_NAME} - Create PostgreSQL tunnels through Kubernetes jump pods
+${SCRIPT_NAME} - Create TCP tunnels through Kubernetes jump pods
 
 USAGE:
-    ${SCRIPT_NAME} --env <environment> --db <database> [OPTIONS]
+    ${SCRIPT_NAME} --env <environment> --db <connection> [OPTIONS]
     ${SCRIPT_NAME} <SUBCOMMAND>
 
 DESCRIPTION:
     This plugin creates a temporary jump pod in your Kubernetes cluster and
-    forwards a local port to a remote PostgreSQL database. It simplifies
-    secure database access without exposing databases directly.
+    forwards a local port to a remote TCP service (PostgreSQL, MySQL, Redis, etc.).
+    It simplifies secure service access without exposing services directly.
 
 OPTIONS:
     --env <environment>    Environment to use (e.g., staging, production)
-    --db <database>        Database alias to connect to
-    --local-port <port>    Local port to forward to (default: 5432)
+    --db <connection>      Connection alias to use (supports any TCP service)
+    --local-port <port>    Local port to forward to (overrides connection type default)
     --help                 Show this help message
     --version              Show version information
 
 SUBCOMMANDS:
-    ls [environment]       List available environments and databases
+    ls [environment]       List available environments and connections
                            Optionally filter by environment
     edit-config            Open configuration file in \$EDITOR
     upgrade                Upgrade to the latest version
-    uninstall              Uninstall kubectl-pg-tunnel
+    uninstall              Uninstall kubectl-tcp-tunnel
     help                   Show this help message
     version                Show version information
 
 EXAMPLES:
-    # Create tunnel to staging user database
+    # Create tunnel to staging PostgreSQL database
     ${SCRIPT_NAME} --env staging --db user-db
 
-    # Create tunnel to production with custom local port
-    ${SCRIPT_NAME} --env production --db order-db --local-port 5433
+    # Create tunnel to production MySQL with custom local port
+    ${SCRIPT_NAME} --env production --db order-db --local-port 3307
 
-    # List all available environments and databases
+    # Create tunnel to Redis cache
+    ${SCRIPT_NAME} --env staging --db cache
+
+    # List all available environments and connections
     ${SCRIPT_NAME} ls
 
-    # List databases for staging environment
+    # List connections for staging environment
     ${SCRIPT_NAME} ls staging
 
     # Edit configuration
@@ -110,16 +113,16 @@ CONFIGURATION:
     See config/config.yaml.example for documentation.
 
 ENVIRONMENT VARIABLES:
-    PG_TUNNEL_CONFIG    Override default config file location
+    TCP_TUNNEL_CONFIG    Override default config file location
 
 HOW IT WORKS:
     1. Switches to the appropriate Kubernetes context (via kubectx)
     2. Creates a temporary jump pod using alpine/socat
-    3. Forwards local port to remote PostgreSQL host:port
+    3. Forwards local port to remote TCP service host:port
     4. Keeps the tunnel open until you press Ctrl+C
     5. Cleans up the jump pod on exit
 
-For more information, visit: https://github.com/yourusername/kubectl-pg-tunnel
+For more information, visit: https://github.com/sgyyz/kubectl-tcp-tunnel
 EOF
 }
 
@@ -223,11 +226,11 @@ get_env_context() {
     yq eval ".environments.${env}.k8s-context // \"\"" "${CONFIG_FILE}" 2>/dev/null
 }
 
-# Get database host
+# Get connection host
 get_db_host() {
     local env="$1"
     local db="$2"
-    yq eval ".environments.${env}.databases.${db} // \"\"" "${CONFIG_FILE}" 2>/dev/null
+    yq eval "explode(.) | .environments.${env}.connections.${db}.host // \"\"" "${CONFIG_FILE}" 2>/dev/null
 }
 
 # List all environments
@@ -235,10 +238,24 @@ list_environments() {
     yq eval '.environments | keys | .[]' "${CONFIG_FILE}" 2>/dev/null
 }
 
-# List databases for an environment
-list_databases_for_env() {
+# List connections for an environment
+list_connections_for_env() {
     local env="$1"
-    yq eval ".environments.${env}.databases | keys | .[]" "${CONFIG_FILE}" 2>/dev/null
+    yq eval ".environments.${env}.connections | keys | .[]" "${CONFIG_FILE}" 2>/dev/null
+}
+
+# Get connection local-port (from type definition)
+get_connection_local_port() {
+    local env="$1"
+    local conn="$2"
+    yq eval "explode(.) | .environments.${env}.connections.${conn}.type.local-port // \"\"" "${CONFIG_FILE}" 2>/dev/null
+}
+
+# Get connection db-port (from type definition)
+get_connection_db_port() {
+    local env="$1"
+    local conn="$2"
+    yq eval "explode(.) | .environments.${env}.connections.${conn}.type.db-port // \"\"" "${CONFIG_FILE}" 2>/dev/null
 }
 
 # Sanitize hostname to valid Kubernetes pod name
@@ -256,7 +273,7 @@ list_resources() {
 
     load_config
 
-    echo "Available environments and databases:"
+    echo "Available environments and connections:"
     echo ""
 
     local envs
@@ -281,13 +298,13 @@ list_resources() {
 
         echo "Environment: ${env}"
         echo "  Kubernetes context: ${context}"
-        echo "  Databases:"
+        echo "  Connections:"
 
         local dbs
-        dbs=$(list_databases_for_env "${env}")
+        dbs=$(list_connections_for_env "${env}")
 
         if [[ -z "${dbs}" ]]; then
-            echo "    (no databases configured)"
+            echo "    (no connections configured)"
         else
             while IFS= read -r db; do
                 [[ -z "${db}" ]] && continue
@@ -319,21 +336,40 @@ settings:
   namespace: default
   jump-pod-image: alpine/socat:latest
   jump-pod-wait-timeout: 60
-  local-port: 5432
-  db-port: 5432
+
+  # Connection type definitions with YAML anchors
+  postgres: &postgres
+    local-port: 15432
+    db-port: 5432
+
+  mysql: &mysql
+    local-port: 13306
+    db-port: 3306
+
+  redis: &redis
+    local-port: 16379
+    db-port: 6379
 
 environments:
   staging:
     k8s-context: my-staging-cluster
-    databases:
-      user-db: user-db.staging.example.com
-      order-db: order-db.staging.example.com
+    connections:
+      user-db:
+        host: user-db.staging.example.com
+        type: *postgres
+      order-db:
+        host: order-db.staging.example.com
+        type: *mysql
 
   production:
     k8s-context: my-production-cluster
-    databases:
-      user-db: user-db.prod.example.com
-      order-db: order-db.prod.example.com
+    connections:
+      user-db:
+        host: user-db.prod.example.com
+        type: *postgres
+      order-db:
+        host: order-db.prod.example.com
+        type: *mysql
 EOF
             print_success "Created example config file"
         else
@@ -451,7 +487,14 @@ create_tunnel() {
     namespace=$(get_setting "namespace" "${DEFAULT_NAMESPACE}")
     jump_pod_image=$(get_setting "jump-pod-image" "${DEFAULT_JUMP_POD_IMAGE}")
     jump_pod_wait_timeout=$(get_setting "jump-pod-wait-timeout" "${DEFAULT_JUMP_POD_WAIT_TIMEOUT}")
-    db_port=$(get_setting "db-port" "${DEFAULT_DB_PORT}")
+
+    # Try to get db-port from connection type definition first
+    db_port=$(get_connection_db_port "${environment}" "${database}")
+
+    # If not found in connection type, fall back to global setting
+    if [[ -z "${db_port}" ]] || [[ "${db_port}" == "null" ]]; then
+        db_port=$(get_setting "db-port" "${DEFAULT_DB_PORT}")
+    fi
 
     # Get environment context
     local context
@@ -472,12 +515,12 @@ create_tunnel() {
     db_host=$(get_db_host "${environment}" "${database}")
 
     if [[ -z "${db_host}" ]] || [[ "${db_host}" == "null" ]]; then
-        print_error "Unknown database: ${database} in environment: ${environment}"
+        print_error "Unknown connection: ${database} in environment: ${environment}"
         echo ""
-        echo "Available databases for ${environment}:"
-        list_databases_for_env "${environment}" | sed 's/^/  - /'
+        echo "Available connections for ${environment}:"
+        list_connections_for_env "${environment}" | sed 's/^/  - /'
         echo ""
-        echo "Add databases to your config file: ${CONFIG_FILE}"
+        echo "Add connections to your config file: ${CONFIG_FILE}"
         exit 1
     fi
 
@@ -488,7 +531,7 @@ create_tunnel() {
 
     print_info "Environment: ${environment}"
     print_info "Context: ${context}"
-    print_info "Database: ${database} (${db_host})"
+    print_info "Connection: ${database} (${db_host})"
     print_info "Namespace: ${namespace}"
     print_info "Jump pod: ${pod_name}"
     print_info "Local port: ${local_port}"
@@ -545,7 +588,7 @@ create_tunnel() {
     print_info "Local:  localhost:${local_port}"
     print_info "Remote: ${db_host}:${db_port}"
     echo ""
-    print_info "Connect with: psql -h localhost -p ${local_port} -U <username> <database>"
+    print_info "You can now connect to localhost:${local_port}"
     echo ""
     print_warning "Press Ctrl+C to stop the tunnel and clean up"
     echo ""
@@ -641,25 +684,31 @@ main() {
     if [[ -z "${environment}" ]]; then
         print_error "Missing required option: --env <environment>"
         echo ""
-        echo "Usage: ${SCRIPT_NAME} --env <environment> --db <database>"
+        echo "Usage: ${SCRIPT_NAME} --env <environment> --db <connection>"
         echo ""
         echo "Use '${SCRIPT_NAME} ls' to see available environments"
         exit 1
     fi
 
     if [[ -z "${database}" ]]; then
-        print_error "Missing required option: --db <database>"
+        print_error "Missing required option: --db <connection>"
         echo ""
-        echo "Usage: ${SCRIPT_NAME} --env <environment> --db <database>"
+        echo "Usage: ${SCRIPT_NAME} --env <environment> --db <connection>"
         echo ""
-        echo "Use '${SCRIPT_NAME} ls ${environment}' to see available databases"
+        echo "Use '${SCRIPT_NAME} ls ${environment}' to see available connections"
         exit 1
     fi
 
     # If local_port not specified via flag, read from config or use default
     if [[ -z "${local_port}" ]]; then
         load_config
-        local_port=$(get_setting "local-port" "${DEFAULT_LOCAL_PORT}")
+        # Try to get local-port from connection type definition first
+        local_port=$(get_connection_local_port "${environment}" "${database}")
+
+        # If not found in connection type, fall back to global setting
+        if [[ -z "${local_port}" ]] || [[ "${local_port}" == "null" ]]; then
+            local_port=$(get_setting "local-port" "${DEFAULT_LOCAL_PORT}")
+        fi
     fi
 
     # Create the tunnel

@@ -338,19 +338,19 @@ fi
 # Update the version comparison links at the bottom
 if grep -q "\[Unreleased\]:" CHANGELOG.md; then
     # Update [Unreleased] link
-    sed -i.tmp "s|\[Unreleased\]:.*|\[Unreleased\]: https://github.com/sgyyz/kubectl-pg-tunnel/compare/v${VERSION}...HEAD|g" CHANGELOG.md
+    sed -i.tmp "s|\[Unreleased\]:.*|\[Unreleased\]: https://github.com/sgyyz/kubectl-tcp-tunnel/compare/v${VERSION}...HEAD|g" CHANGELOG.md
     rm -f CHANGELOG.md.tmp
 
     # Add new version link if not exists
     if ! grep -q "\[${VERSION}\]:" CHANGELOG.md; then
-        echo "[${VERSION}]: https://github.com/sgyyz/kubectl-pg-tunnel/releases/tag/v${VERSION}" >> CHANGELOG.md
+        echo "[${VERSION}]: https://github.com/sgyyz/kubectl-tcp-tunnel/releases/tag/v${VERSION}" >> CHANGELOG.md
     fi
 else
     # Add comparison links section
     cat >> CHANGELOG.md <<EOF
 
-[Unreleased]: https://github.com/sgyyz/kubectl-pg-tunnel/compare/v${VERSION}...HEAD
-[${VERSION}]: https://github.com/sgyyz/kubectl-pg-tunnel/releases/tag/v${VERSION}
+[Unreleased]: https://github.com/sgyyz/kubectl-tcp-tunnel/compare/v${VERSION}...HEAD
+[${VERSION}]: https://github.com/sgyyz/kubectl-tcp-tunnel/releases/tag/v${VERSION}
 EOF
 fi
 

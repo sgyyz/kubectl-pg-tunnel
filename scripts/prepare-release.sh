@@ -33,20 +33,20 @@ else
     echo ""
 fi
 
-# Step 2: Update version in kubectl-pg_tunnel
-echo "Step 2: Updating kubectl-pg_tunnel..."
-# Extract current version from kubectl-pg_tunnel
+# Step 2: Update version in kubectl-tcp_tunnel
+echo "Step 2: Updating kubectl-tcp_tunnel..."
+# Extract current version from kubectl-tcp_tunnel
 # shellcheck disable=SC2016
-CURRENT_VERSION=$(grep 'VERSION="\${KUBECTL_PG_TUNNEL_VERSION:-' kubectl-pg_tunnel | head -1 | sed 's/.*:-\([^}]*\)}.*/\1/')
+CURRENT_VERSION=$(grep 'VERSION="\${KUBECTL_TCP_TUNNEL_VERSION:-' kubectl-tcp_tunnel | head -1 | sed 's/.*:-\([^}]*\)}.*/\1/')
 if [[ -z "${CURRENT_VERSION}" ]]; then
-    echo "Error: Could not detect current version in kubectl-pg_tunnel"
+    echo "Error: Could not detect current version in kubectl-tcp_tunnel"
     exit 1
 fi
 echo "  Current version: ${CURRENT_VERSION}"
 echo "  New version: v${VERSION}"
 # Replace current version with new version
-sed -i.bak "s/VERSION=\"\\\${KUBECTL_PG_TUNNEL_VERSION:-${CURRENT_VERSION}}\"/VERSION=\"\\\${KUBECTL_PG_TUNNEL_VERSION:-v${VERSION}}\"/g" kubectl-pg_tunnel
-rm kubectl-pg_tunnel.bak
+sed -i.bak "s/VERSION=\"\\\${KUBECTL_TCP_TUNNEL_VERSION:-${CURRENT_VERSION}}\"/VERSION=\"\\\${KUBECTL_TCP_TUNNEL_VERSION:-v${VERSION}}\"/g" kubectl-tcp_tunnel
+rm kubectl-tcp_tunnel.bak
 
 # Step 3: Update version in install.sh
 echo "Step 3: Updating install.sh..."
@@ -58,7 +58,7 @@ echo "✓ Release v${VERSION} prepared!"
 echo ""
 echo "Files updated:"
 echo "  - CHANGELOG.md (from commit messages)"
-echo "  - kubectl-pg_tunnel (version updated to v${VERSION})"
+echo "  - kubectl-tcp_tunnel (version updated to v${VERSION})"
 echo "  - install.sh (version updated to ${VERSION})"
 echo ""
 echo "Next steps:"

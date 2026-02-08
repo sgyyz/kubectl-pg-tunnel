@@ -24,7 +24,7 @@ jobs:
       - name: Create release archive
         run: |
           mkdir -p release
-          cp kubectl-pg_tunnel release/
+          cp kubectl-tcp_tunnel release/
           cp install.sh release/
           cp uninstall.sh release/
           cp -r config release/
@@ -33,11 +33,11 @@ jobs:
           cp CHANGELOG.md release/
 
           cd release
-          tar -czf ../kubectl-pg-tunnel-v${{ steps.get_version.outputs.VERSION }}.tar.gz *
+          tar -czf ../kubectl-tcp-tunnel-v${{ steps.get_version.outputs.VERSION }}.tar.gz *
           cd ..
 
           # Create checksums
-          sha256sum kubectl-pg-tunnel-v${{ steps.get_version.outputs.VERSION }}.tar.gz > checksums.txt
+          sha256sum kubectl-tcp-tunnel-v${{ steps.get_version.outputs.VERSION }}.tar.gz > checksums.txt
 
       - name: Generate release notes
         id: release_notes
@@ -52,7 +52,7 @@ jobs:
           fi
 
           cat > release_notes.md <<EOF
-          ## kubectl-pg-tunnel v${VERSION}
+          ## kubectl-tcp-tunnel v${VERSION}
 
           ### Installation
 
@@ -62,15 +62,15 @@ jobs:
           \`\`\`
 
           **Or download and install manually:**
-          1. Download \`kubectl-pg-tunnel-v${VERSION}.tar.gz\`
-          2. Extract: \`tar -xzf kubectl-pg-tunnel-v${VERSION}.tar.gz\`
+          1. Download \`kubectl-tcp-tunnel-v${VERSION}.tar.gz\`
+          2. Extract: \`tar -xzf kubectl-tcp-tunnel-v${VERSION}.tar.gz\`
           3. Run: \`./install.sh\`
 
           ### Upgrade
 
-          If you already have kubectl-pg-tunnel installed:
+          If you already have kubectl-tcp-tunnel installed:
           \`\`\`bash
-          kubectl pg-tunnel upgrade
+          kubectl tcp-tunnel upgrade
           \`\`\`
 
           ### What's Changed
@@ -93,9 +93,9 @@ jobs:
         with:
           body_path: release_notes.md
           files: |
-            kubectl-pg-tunnel-v${{ steps.get_version.outputs.VERSION }}.tar.gz
+            kubectl-tcp-tunnel-v${{ steps.get_version.outputs.VERSION }}.tar.gz
             checksums.txt
-            kubectl-pg_tunnel
+            kubectl-tcp_tunnel
             install.sh
             uninstall.sh
         env:

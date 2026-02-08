@@ -25,7 +25,7 @@ jobs:
           sudo apt-get install -y shellcheck
 
       - name: Run shellcheck on main plugin
-        run: shellcheck kubectl-pg_tunnel
+        run: shellcheck kubectl-tcp_tunnel
 
       - name: Run shellcheck on install script
         run: shellcheck install.sh
@@ -36,7 +36,7 @@ jobs:
       - name: Check for common issues
         run: |
           echo "Checking for TODO/FIXME comments..."
-          ! grep -r "TODO\|FIXME" kubectl-pg_tunnel install.sh uninstall.sh || true
+          ! grep -r "TODO\|FIXME" kubectl-tcp_tunnel install.sh uninstall.sh || true
 
   test:
     name: Test Suite
@@ -55,7 +55,7 @@ jobs:
       - name: Run BATS tests
         run: |
           bats --version
-          bats tests/pg_tunnel_test.bats
+          bats tests/tcp_tunnel_test.bats
 
       - name: Display test results
         if: always()
@@ -82,18 +82,18 @@ jobs:
 
       - name: Verify script syntax
         run: |
-          bash -n kubectl-pg_tunnel
+          bash -n kubectl-tcp_tunnel
           bash -n install.sh
           bash -n uninstall.sh
 
       - name: Test help output
         run: |
-          chmod +x kubectl-pg_tunnel
-          ./kubectl-pg_tunnel --help
+          chmod +x kubectl-tcp_tunnel
+          ./kubectl-tcp_tunnel --help
 
       - name: Test version output
         run: |
-          ./kubectl-pg_tunnel --version
+          ./kubectl-tcp_tunnel --version
 
   security:
     name: Security Scan
@@ -106,13 +106,13 @@ jobs:
       - name: Check for hardcoded secrets
         run: |
           echo "Scanning for potential secrets..."
-          ! grep -r "password\|secret\|token\|key" --include="*.sh" --include="kubectl-pg_tunnel" . || true
+          ! grep -r "password\|secret\|token\|key" --include="*.sh" --include="kubectl-tcp_tunnel" . || true
 
       - name: Check file permissions
         run: |
           echo "Checking file permissions..."
-          ls -la kubectl-pg_tunnel install.sh uninstall.sh
-          [ -x kubectl-pg_tunnel ] && echo "✓ kubectl-pg_tunnel is executable"
+          ls -la kubectl-tcp_tunnel install.sh uninstall.sh
+          [ -x kubectl-tcp_tunnel ] && echo "✓ kubectl-tcp_tunnel is executable"
           [ -x install.sh ] && echo "✓ install.sh is executable"
           [ -x uninstall.sh ] && echo "✓ uninstall.sh is executable"
 

@@ -1,6 +1,6 @@
 # Release Process
 
-This document describes how to create a new release of kubectl-pg-tunnel.
+This document describes how to create a new release of kubectl-tcp-tunnel.
 
 ## Prerequisites
 
@@ -57,7 +57,7 @@ This command will automatically:
    - Support conventional commits (feat:, fix:, docs:, etc.)
 
 3. **Update versions:**
-   - Update `kubectl-pg_tunnel` to new version (e.g., v1.0.0 → v1.0.1)
+   - Update `kubectl-tcp_tunnel` to new version (e.g., v1.0.0 → v1.0.1)
    - Update `install.sh` to new version
 
 4. **Commit and tag:**
@@ -85,15 +85,15 @@ Once you push the tag, GitHub Actions will automatically:
 
 ### 7. Verify Release
 
-1. Visit https://github.com/sgyyz/kubectl-pg-tunnel/releases
+1. Visit https://github.com/sgyyz/kubectl-tcp-tunnel/releases
 2. Verify the new release appears
 3. Check that assets are attached:
-   - `kubectl-pg-tunnel-v1.0.0.tar.gz`
+   - `kubectl-tcp-tunnel-v1.0.0.tar.gz`
    - `checksums.txt`
    - Individual files
 4. Test installation:
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/v1.0.0/install.sh | bash
+   curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-tcp-tunnel/v1.0.0/install.sh | bash
    ```
 
 ### 8. Announce
@@ -118,10 +118,10 @@ That's it! The rest is automated.
 
 ### 1. Verify Release
 
-1. Visit https://github.com/sgyyz/kubectl-pg-tunnel/releases
+1. Visit https://github.com/sgyyz/kubectl-tcp-tunnel/releases
 2. Verify the new release appears
 3. Check that assets are attached:
-   - `kubectl-pg-tunnel-v1.0.0.tar.gz`
+   - `kubectl-tcp-tunnel-v1.0.0.tar.gz`
    - `checksums.txt`
    - Individual files
 
@@ -130,7 +130,7 @@ That's it! The rest is automated.
 Test the installation from the new release:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/v1.0.0/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-tcp-tunnel/v1.0.0/install.sh | bash
 ```
 
 ### 3. Test Upgrade Command
@@ -138,7 +138,7 @@ curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/v1.0.0/inst
 Test that existing users can upgrade:
 
 ```bash
-kubectl pg-tunnel upgrade
+kubectl tcp-tunnel upgrade
 ```
 
 ### 4. Verify Update Detection
@@ -146,7 +146,7 @@ kubectl pg-tunnel upgrade
 Test that version checking works:
 
 ```bash
-kubectl pg-tunnel --version
+kubectl tcp-tunnel --version
 ```
 
 Should show current version and notify if update is available.
@@ -250,12 +250,12 @@ If `__VERSION__` appears in the released files:
 The plugin checks for updates on `--version`:
 
 ```bash
-$ kubectl pg-tunnel --version
-kubectl pg-tunnel version 1.0.0
+$ kubectl tcp-tunnel --version
+kubectl tcp-tunnel version 1.0.0
 
 ⚠ A newer version is available: 1.1.0
 
-Update with: kubectl pg-tunnel upgrade
+Update with: kubectl tcp-tunnel upgrade
 ```
 
 This helps users stay up to date.

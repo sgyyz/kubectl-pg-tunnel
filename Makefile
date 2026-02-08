@@ -1,7 +1,7 @@
 .PHONY: help lint test install uninstall clean check setup-hooks dev-setup release
 
 help:
-	@echo "kubectl-pg-tunnel - Development Commands"
+	@echo "kubectl-tcp-tunnel - Development Commands"
 	@echo ""
 	@echo "Available targets:"
 	@echo "  make dev-setup  - Install development dependencies"
@@ -35,9 +35,10 @@ help:
 lint:
 	@echo "Running shellcheck..."
 	@if command -v shellcheck >/dev/null 2>&1; then \
-		shellcheck kubectl-pg_tunnel && \
+		shellcheck kubectl-tcp_tunnel && \
 		shellcheck install.sh && \
 		shellcheck uninstall.sh && \
+		shellcheck dev-setup.sh && \
 		echo "✓ All shellcheck tests passed!"; \
 	else \
 		echo "Error: shellcheck not found. Install with: brew install shellcheck"; \
@@ -47,7 +48,7 @@ lint:
 test:
 	@echo "Running BATS tests..."
 	@if command -v bats >/dev/null 2>&1; then \
-		bats tests/pg_tunnel_test.bats; \
+		bats tests/tcp_tunnel_test.bats; \
 	else \
 		echo "Error: bats not found. Install with: brew install bats-core"; \
 		exit 1; \
@@ -57,11 +58,11 @@ check: lint test
 	@echo "✓ All checks passed!"
 
 install:
-	@echo "Installing kubectl-pg-tunnel..."
+	@echo "Installing kubectl-tcp-tunnel..."
 	@./install.sh
 
 uninstall:
-	@echo "Uninstalling kubectl-pg-tunnel..."
+	@echo "Uninstalling kubectl-tcp-tunnel..."
 	@./uninstall.sh
 
 clean:
@@ -118,7 +119,7 @@ release:
 	@./scripts/prepare-release.sh $(VERSION)
 	@echo ""
 	@echo "Committing and tagging release..."
-	@git add kubectl-pg_tunnel install.sh CHANGELOG.md
+	@git add kubectl-tcp_tunnel install.sh CHANGELOG.md
 	@git commit -m "Release v$(VERSION)"
 	@git tag -a "v$(VERSION)" -m "Release v$(VERSION)"
 	@echo ""

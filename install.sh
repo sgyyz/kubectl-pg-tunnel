@@ -2,13 +2,13 @@
 
 set -euo pipefail
 
-# kubectl-pg-tunnel Installation Script
+# kubectl-tcp-tunnel Installation Script
 
 VERSION="1.0.2"
-PLUGIN_NAME="kubectl-pg_tunnel"
-CONFIG_DIR="${HOME}/.config/kubectl-pg-tunnel"
+PLUGIN_NAME="kubectl-tcp_tunnel"
+CONFIG_DIR="${HOME}/.config/kubectl-tcp-tunnel"
 CONFIG_FILE="${CONFIG_DIR}/config.yaml"
-GITHUB_REPO="sgyyz/kubectl-pg-tunnel"
+GITHUB_REPO="sgyyz/kubectl-tcp-tunnel"
 GITHUB_RAW="https://raw.githubusercontent.com/${GITHUB_REPO}/main"
 
 # Color codes
@@ -37,7 +37,7 @@ print_warning() {
 print_header() {
     echo ""
     echo "======================================"
-    echo "  kubectl-pg-tunnel Installer v${VERSION}"
+    echo "  kubectl-tcp-tunnel Installer v${VERSION}"
     echo "======================================"
     echo ""
 }
@@ -264,10 +264,10 @@ setup_config() {
 verify_installation() {
     print_info "Verifying installation..."
 
-    if kubectl pg-tunnel --version >/dev/null 2>&1; then
+    if kubectl tcp-tunnel --version >/dev/null 2>&1; then
         print_success "Installation verified successfully"
         echo ""
-        kubectl pg-tunnel --version
+        kubectl tcp-tunnel --version
         return 0
     else
         print_warning "Could not verify installation"
@@ -286,7 +286,7 @@ print_instructions() {
     echo "Next steps:"
     echo ""
     echo "1. Edit your configuration file:"
-    echo "   kubectl pg-tunnel edit-config"
+    echo "   kubectl tcp-tunnel edit-config"
     echo ""
     echo "2. Update the following settings:"
     echo "   - namespace: Your Kubernetes namespace"
@@ -294,11 +294,11 @@ print_instructions() {
     echo "   - environments.*.databases.*: Your database hostnames"
     echo ""
     echo "3. Test the installation:"
-    echo "   kubectl pg-tunnel --help"
-    echo "   kubectl pg-tunnel ls"
+    echo "   kubectl tcp-tunnel --help"
+    echo "   kubectl tcp-tunnel ls"
     echo ""
     echo "4. Create your first tunnel:"
-    echo "   kubectl pg-tunnel --env staging --db your_database_alias"
+    echo "   kubectl tcp-tunnel --env staging --db your_database_alias"
     echo ""
     echo "For more information:"
     echo "  https://github.com/${GITHUB_REPO}"

@@ -16,16 +16,27 @@ settings:
   # Timeout in seconds to wait for jump pod to become ready
   jump-pod-wait-timeout: 60
 
-  # Local port to forward to (can be overridden with --local-port flag)
-  local-port: 5432
+  # Connection type definitions (use YAML anchors for reusability)
+  postgres: &postgres
+    local-port: 15432
+    db-port: 5432
 
-  # Remote PostgreSQL port (standard is 5432)
-  db-port: 5432
+  mysql: &mysql
+    local-port: 13306
+    db-port: 3306
+
+  redis: &redis
+    local-port: 16379
+    db-port: 6379
+
+  mongodb: &mongodb
+    local-port: 17017
+    db-port: 27017
 
 # ==============================================================================
 # ENVIRONMENTS
 # ==============================================================================
-# Define your environments with their Kubernetes contexts and databases
+# Define your environments with their Kubernetes contexts and connections
 
 environments:
   # Staging environment
@@ -33,29 +44,69 @@ environments:
     # Kubernetes context name (get with: kubectl config get-contexts)
     k8s-context: my-staging-cluster
 
-    # Database hosts accessible from the staging cluster
-    databases:
-      user-db: user-db.staging.internal.example.com
-      order-db: order-db.staging.internal.example.com
-      analytics-db: analytics-db.staging.internal.example.com
+    # TCP connections accessible from the staging cluster
+    connections:
+      user-db:
+        host: user-db.staging.internal.example.com
+        type: *postgres
+
+      order-db:
+        host: order-db.staging.internal.example.com
+        type: *mysql
+
+      cache:
+        host: redis.staging.internal.example.com
+        type: *redis
 
   # Production environment
   production:
     k8s-context: my-production-cluster
 
-    databases:
-      user-db: user-db.prod.internal.example.com
-      order-db: order-db.prod.internal.example.com
-      analytics-db: analytics-db.prod.internal.example.com
-      # You can have different databases in different environments
-      payment-db: payment-db.prod.internal.example.com
+    connections:
+      user-db:
+        host: user-db.prod.internal.example.com
+        type: *postgres
+
+      order-db:
+        host: order-db.prod.internal.example.com
+        type: *mysql
+
+      analytics-db:
+        host: analytics-db.prod.internal.example.com
+        type: *postgres
+
+      cache:
+        host: redis.prod.internal.example.com
+        type: *redis
+
+      sessions:
+        host: mongodb.prod.internal.example.com
+        type: *mongodb
 
   # Development environment (optional)
   dev:
     k8s-context: my-dev-cluster
 
-    databases:
-      main-db: postgres.dev.internal.example.com
+    connections:
+      main-db:
+        host: postgres.dev.internal.example.com
+        type: *postgres
+
+# ==============================================================================
+# CUSTOM CONNECTION TYPES
+# ==============================================================================
+# You can define custom connection types for specific ports:
+#
+# settings:
+#   custom-service: &custom-service
+#     local-port: 18080
+#     db-port: 8080
+#
+# Then reference it in your connections:
+#   connections:
+#     my-service:
+#       host: service.example.com
+#       type: *custom-service
 
 # ==============================================================================
 # USAGE EXAMPLES
@@ -63,19 +114,22 @@ environments:
 #
 # Once configured, use the plugin like this:
 #
-#   # Connect to staging user database
+#   # Connect to staging user database (PostgreSQL)
 #   kubectl pg-tunnel --env staging --db user-db
 #
-#   # Connect to production analytics database
+#   # Connect to production analytics database (PostgreSQL)
 #   kubectl pg-tunnel --env production --db analytics-db
 #
-#   # Connect with custom local port
-#   kubectl pg-tunnel --env staging --db order-db --local-port 5433
+#   # Connect to Redis cache
+#   kubectl pg-tunnel --env staging --db cache
 #
-#   # List all environments and databases
+#   # Connect with custom local port (overrides type definition)
+#   kubectl pg-tunnel --env staging --db order-db --local-port 3307
+#
+#   # List all environments and connections
 #   kubectl pg-tunnel ls
 #
-#   # List databases for staging environment
+#   # List connections for staging environment
 #   kubectl pg-tunnel ls staging
 #
 # ==============================================================================
@@ -85,12 +139,16 @@ environments:
 # 1. Update k8s-context values to match your kubectl contexts
 #    Get your contexts with: kubectl config get-contexts
 #
-# 2. Update database hostnames to match your actual database hosts
+# 2. Update connection hostnames to match your actual service hosts
 #    These hosts must be accessible from within your Kubernetes cluster
 #
-# 3. Add more environments and databases as needed
+# 3. Define connection types with anchors (&name) and reference them (*name)
+#    This makes it easy to manage port configurations
 #
-# 4. Make sure your service account has permissions to create/delete pods
+# 4. Add more environments and connections as needed
+#    Supports PostgreSQL, MySQL, Redis, MongoDB, and any TCP service
+#
+# 5. Make sure your service account has permissions to create/delete pods
 #    in the specified namespace
 #
 # For security:

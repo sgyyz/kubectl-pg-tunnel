@@ -1,6 +1,6 @@
 # Usage Guide
 
-Comprehensive guide for using kubectl-pg-tunnel.
+Comprehensive guide for using kubectl-tcp-tunnel for any TCP service.
 
 ## Table of Contents
 
@@ -8,6 +8,7 @@ Comprehensive guide for using kubectl-pg-tunnel.
 - [Configuration](#configuration)
 - [Commands](#commands)
 - [Examples](#examples)
+- [Migration Guide](#migration-guide)
 - [Troubleshooting](#troubleshooting)
 
 ## Basic Usage
@@ -15,17 +16,17 @@ Comprehensive guide for using kubectl-pg-tunnel.
 ### Command Syntax
 
 ```bash
-kubectl pg-tunnel --env <environment> --db <database> [OPTIONS]
+kubectl tcp-tunnel --env <environment> --db <connection> [OPTIONS]
 ```
 
 ### Required Flags
 
 - `--env <environment>` - Environment to use (staging, production, etc.)
-- `--db <database>` - Database alias to connect to
+- `--db <connection>` - Connection alias to use (supports any TCP service)
 
 ### Optional Flags
 
-- `--local-port <port>` - Local port to forward to (default: 5432)
+- `--local-port <port>` - Local port to forward to (overrides connection type default)
 - `--help` - Show help message
 - `--version` - Show version information
 
@@ -34,8 +35,8 @@ kubectl pg-tunnel --env <environment> --db <database> [OPTIONS]
 ### Config File Location
 
 The plugin looks for configuration at:
-- `~/.config/kubectl-pg-tunnel/config.yaml` (default)
-- Or set `PG_TUNNEL_CONFIG` environment variable to use a custom location
+- `~/.config/kubectl-tcp-tunnel/config.yaml` (default)
+- Or set `TCP_TUNNEL_CONFIG` environment variable to use a custom location
 
 ### Configuration Structure
 
@@ -45,22 +46,48 @@ settings:
   namespace: default
   jump-pod-image: alpine/socat:latest
   jump-pod-wait-timeout: 60
-  local-port: 5432
-  db-port: 5432
+
+  # Define connection types with YAML anchors
+  postgres: &postgres
+    local-port: 15432
+    db-port: 5432
+
+  mysql: &mysql
+    local-port: 13306
+    db-port: 3306
+
+  redis: &redis
+    local-port: 16379
+    db-port: 6379
+
+  mongodb: &mongodb
+    local-port: 17017
+    db-port: 27017
 
 # Define environments
 environments:
   staging:
     k8s-context: my-staging-cluster
-    databases:
-      user-db: user-db.staging.example.com
-      order-db: order-db.staging.example.com
+    connections:
+      user-db:
+        host: user-db.staging.example.com
+        type: *postgres
+      order-db:
+        host: order-db.staging.example.com
+        type: *mysql
+      cache:
+        host: redis.staging.example.com
+        type: *redis
 
   production:
     k8s-context: my-production-cluster
-    databases:
-      user-db: user-db.prod.example.com
-      order-db: order-db.prod.example.com
+    connections:
+      user-db:
+        host: user-db.prod.example.com
+        type: *postgres
+      order-db:
+        host: order-db.prod.example.com
+        type: *mysql
 ```
 
 ### Configuration Variables
@@ -70,19 +97,20 @@ environments:
 | `settings.namespace` | Kubernetes namespace for jump pods | `default` |
 | `settings.jump-pod-image` | Docker image with socat | `alpine/socat:latest` |
 | `settings.jump-pod-wait-timeout` | Seconds to wait for pod ready | `60` |
-| `settings.local-port` | Local port to forward to | `5432` |
-| `settings.db-port` | Remote PostgreSQL port | `5432` |
+| `settings.<type>.local-port` | Local port for connection type | Type-specific |
+| `settings.<type>.db-port` | Remote port for connection type | Type-specific |
 | `environments.<name>.k8s-context` | Kubectl context for environment | Required |
-| `environments.<name>.databases.<alias>` | Database hostname | Required |
+| `environments.<name>.connections.<alias>.host` | Service hostname | Required |
+| `environments.<name>.connections.<alias>.type` | Connection type (YAML anchor) | Required |
 
 ### Editing Configuration
 
 ```bash
 # Edit configuration with your default editor
-kubectl pg-tunnel edit-config
+kubectl tcp-tunnel edit-config
 
 # Or edit directly
-$EDITOR ~/.config/kubectl-pg-tunnel/config.yaml
+$EDITOR ~/.config/kubectl-tcp-tunnel/config.yaml
 ```
 
 ### Adding New Environments
@@ -92,9 +120,41 @@ environments:
   # Add a new environment
   dev:
     k8s-context: my-dev-cluster
-    databases:
-      main-db: postgres-dev.internal.example.com
-      analytics-db: analytics-dev.internal.example.com
+    connections:
+      main-db:
+        host: postgres-dev.internal.example.com
+        type: *postgres
+      analytics-db:
+        host: analytics-dev.internal.example.com
+        type: *postgres
+```
+
+### Adding Custom Connection Types
+
+You can define custom connection types for any TCP service:
+
+```yaml
+settings:
+  # Custom application on port 8080
+  myapp: &myapp
+    local-port: 18080
+    db-port: 8080
+
+  # SSH tunnel
+  ssh: &ssh
+    local-port: 2222
+    db-port: 22
+
+environments:
+  staging:
+    k8s-context: staging-cluster
+    connections:
+      app-server:
+        host: app.staging.example.com
+        type: *myapp
+      bastion:
+        host: bastion.staging.example.com
+        type: *ssh
 ```
 
 ## Commands
@@ -103,13 +163,13 @@ environments:
 
 ```bash
 # Connect to staging user database
-kubectl pg-tunnel --env staging --db user-db
+kubectl tcp-tunnel --env staging --db user-db
 
 # Connect to production order database
-kubectl pg-tunnel --env production --db order-db
+kubectl tcp-tunnel --env production --db order-db
 
 # Use custom local port
-kubectl pg-tunnel --env staging --db user-db --local-port 5433
+kubectl tcp-tunnel --env staging --db user-db --local-port 5433
 ```
 
 When the tunnel is established, you'll see:
@@ -131,26 +191,27 @@ When the tunnel is established, you'll see:
 ### List Resources
 
 ```bash
-# List all environments and databases
-kubectl pg-tunnel ls
+# List all environments and connections
+kubectl tcp-tunnel ls
 
-# List databases for specific environment
-kubectl pg-tunnel ls staging
+# List connections for specific environment
+kubectl tcp-tunnel ls staging
 ```
 
 Output:
 ```
-Available environments and databases:
+Available environments and connections:
 
 Environment: staging
   Kubernetes context: my-staging-cluster
-  Databases:
+  Connections:
     - user-db: user-db.staging.example.com
     - order-db: order-db.staging.example.com
+    - cache: redis.staging.example.com
 
 Environment: production
   Kubernetes context: my-production-cluster
-  Databases:
+  Connections:
     - user-db: user-db.prod.example.com
     - order-db: order-db.prod.example.com
 ```
@@ -158,25 +219,25 @@ Environment: production
 ### Edit Configuration
 
 ```bash
-kubectl pg-tunnel edit-config
+kubectl tcp-tunnel edit-config
 ```
 
 ### Show Help
 
 ```bash
-kubectl pg-tunnel --help
+kubectl tcp-tunnel --help
 ```
 
 ### Show Version
 
 ```bash
-kubectl pg-tunnel --version
+kubectl tcp-tunnel --version
 ```
 
 ### Upgrade
 
 ```bash
-kubectl pg-tunnel upgrade
+kubectl tcp-tunnel upgrade
 ```
 
 Upgrades to the latest version from GitHub. Your configuration will be preserved.
@@ -184,21 +245,51 @@ Upgrades to the latest version from GitHub. Your configuration will be preserved
 ### Uninstall
 
 ```bash
-kubectl pg-tunnel uninstall
+kubectl tcp-tunnel uninstall
 ```
 
-Uninstalls kubectl-pg-tunnel. You'll be prompted whether to remove configuration files.
+Uninstalls kubectl-tcp-tunnel. You'll be prompted whether to remove configuration files.
 
 ## Examples
 
-### Connect with psql
+### Connect to PostgreSQL
 
 ```bash
 # Terminal 1: Create tunnel
-kubectl pg-tunnel --env staging --db user-db
+kubectl tcp-tunnel --env staging --db user-db
 
 # Terminal 2: Connect with psql
-psql -h localhost -p 5432 -U myuser mydatabase
+psql -h localhost -p 15432 -U myuser mydatabase
+```
+
+### Connect to MySQL
+
+```bash
+# Terminal 1: Create tunnel
+kubectl tcp-tunnel --env staging --db order-db
+
+# Terminal 2: Connect with mysql
+mysql -h localhost -P 13306 -u myuser mydatabase
+```
+
+### Connect to Redis
+
+```bash
+# Terminal 1: Create tunnel
+kubectl tcp-tunnel --env staging --db cache
+
+# Terminal 2: Connect with redis-cli
+redis-cli -h localhost -p 16379
+```
+
+### Connect to MongoDB
+
+```bash
+# Terminal 1: Create tunnel
+kubectl tcp-tunnel --env staging --db mongo-db
+
+# Terminal 2: Connect with mongosh
+mongosh "mongodb://localhost:17017/mydatabase"
 ```
 
 ### Connect with GUI Tools
@@ -207,7 +298,7 @@ psql -h localhost -p 5432 -U myuser mydatabase
 
 1. Create the tunnel:
    ```bash
-   kubectl pg-tunnel --env production --db user-db
+   kubectl tcp-tunnel --env production --db user-db
    ```
 
 2. Configure your GUI tool:
@@ -221,7 +312,7 @@ psql -h localhost -p 5432 -U myuser mydatabase
 
 ```bash
 # Terminal 1: Create tunnel
-kubectl pg-tunnel --env staging --db user-db
+kubectl tcp-tunnel --env staging --db user-db
 
 # Terminal 2: Run script
 psql -h localhost -p 5432 -U myuser -d mydatabase -f query.sql
@@ -231,7 +322,7 @@ psql -h localhost -p 5432 -U myuser -d mydatabase -f query.sql
 
 ```bash
 # Terminal 1: Create tunnel
-kubectl pg-tunnel --env production --db user-db
+kubectl tcp-tunnel --env production --db user-db
 
 # Terminal 2: Dump database
 pg_dump -h localhost -p 5432 -U myuser mydatabase > backup.sql
@@ -241,10 +332,10 @@ pg_dump -h localhost -p 5432 -U myuser mydatabase > backup.sql
 
 ```bash
 # Terminal 1: Connect to user database on default port
-kubectl pg-tunnel --env staging --db user-db
+kubectl tcp-tunnel --env staging --db user-db
 
 # Terminal 2: Connect to order database on different port
-kubectl pg-tunnel --env staging --db order-db --local-port 5433
+kubectl tcp-tunnel --env staging --db order-db --local-port 5433
 
 # Terminal 3: Connect to both
 psql -h localhost -p 5432 -U user1 userdb    # user-db
@@ -290,6 +381,101 @@ Jump pods are minimal:
 - CPU: negligible
 - Network: only PostgreSQL traffic
 
+## Migration Guide
+
+### Upgrading from v1.x to v2.0
+
+Version 2.0 introduces a **breaking change** to support generic TCP connections. The configuration format has changed from a flat `databases:` map to a structured `connections:` format with YAML anchors for connection types.
+
+#### Old Configuration (v1.x)
+
+```yaml
+settings:
+  local-port: 5432
+  db-port: 5432
+
+environments:
+  staging:
+    k8s-context: staging-cluster
+    databases:
+      user-db: user-db.staging.example.com
+      order-db: order-db.staging.example.com
+```
+
+#### New Configuration (v2.0)
+
+```yaml
+settings:
+  postgres: &postgres
+    local-port: 15432
+    db-port: 5432
+
+  mysql: &mysql
+    local-port: 13306
+    db-port: 3306
+
+environments:
+  staging:
+    k8s-context: staging-cluster
+    connections:
+      user-db:
+        host: user-db.staging.example.com
+        type: *postgres
+      order-db:
+        host: order-db.staging.example.com
+        type: *mysql
+```
+
+#### Migration Steps
+
+1. **Backup your current config:**
+   ```bash
+   cp ~/.config/kubectl-tcp-tunnel/config.yaml ~/.config/kubectl-tcp-tunnel/config.yaml.backup
+   ```
+
+2. **Define connection types in settings:**
+   ```yaml
+   settings:
+     postgres: &postgres
+       local-port: 15432
+       db-port: 5432
+   ```
+
+3. **Rename `databases:` to `connections:`:**
+   ```yaml
+   # Old:
+   databases:
+
+   # New:
+   connections:
+   ```
+
+4. **Convert each database entry:**
+   ```yaml
+   # Old:
+   user-db: user-db.example.com
+
+   # New:
+   user-db:
+     host: user-db.example.com
+     type: *postgres
+   ```
+
+5. **Test your configuration:**
+   ```bash
+   kubectl tcp-tunnel ls
+   ```
+
+#### Port Changes
+
+Note that default ports have changed to avoid conflicts:
+- PostgreSQL: 5432 → 15432
+- MySQL: 3306 → 13306
+- Redis: 6379 → 16379
+- MongoDB: 27017 → 17017
+
+You can override these with `--local-port` flag or modify the connection type definitions.
+
 ## Troubleshooting
 
 ### Pod Won't Start
@@ -332,7 +518,7 @@ Jump pods are minimal:
 
 **Solutions**:
 - Change `local-port` in config to a different port (e.g., `5433`)
-- Or use `--local-port` flag: `kubectl pg-tunnel --env staging --db user-db --local-port 5433`
+- Or use `--local-port` flag: `kubectl tcp-tunnel --env staging --db user-db --local-port 5433`
 - Or stop other PostgreSQL services on your local machine
 - Check what's using the port: `lsof -i :5432` (macOS/Linux)
 
@@ -378,11 +564,11 @@ sudo apt-get install yq
 **Solutions**:
 ```bash
 # Create configuration
-kubectl pg-tunnel edit-config
+kubectl tcp-tunnel edit-config
 
 # Or copy example
-cp config/config.yaml.example ~/.config/kubectl-pg-tunnel/config.yaml
-$EDITOR ~/.config/kubectl-pg-tunnel/config.yaml
+cp config/config.yaml.example ~/.config/kubectl-tcp-tunnel/config.yaml
+$EDITOR ~/.config/kubectl-tcp-tunnel/config.yaml
 ```
 
 ### Invalid YAML Syntax
@@ -391,7 +577,7 @@ $EDITOR ~/.config/kubectl-pg-tunnel/config.yaml
 
 **Solutions**:
 - Check your YAML indentation (use 2 spaces, not tabs)
-- Validate YAML syntax: `yq eval '.' ~/.config/kubectl-pg-tunnel/config.yaml`
+- Validate YAML syntax: `yq eval '.' ~/.config/kubectl-tcp-tunnel/config.yaml`
 - Copy from example and modify: `config/config.yaml.example`
 
 ## Safety Notes
@@ -425,13 +611,13 @@ If your cluster uses network policies, ensure:
 
 ## Environment Variables
 
-### PG_TUNNEL_CONFIG
+### TCP_TUNNEL_CONFIG
 
 Override the default config file location:
 
 ```bash
-export PG_TUNNEL_CONFIG=/path/to/custom/config.yaml
-kubectl pg-tunnel --env staging --db user-db
+export TCP_TUNNEL_CONFIG=/path/to/custom/config.yaml
+kubectl tcp-tunnel --env staging --db user-db
 ```
 
 ## Tips and Best Practices
@@ -442,9 +628,9 @@ Create shell aliases for frequently used databases:
 
 ```bash
 # Add to ~/.bashrc or ~/.zshrc
-alias pg-staging-user='kubectl pg-tunnel --env staging --db user-db'
-alias pg-prod-user='kubectl pg-tunnel --env production --db user-db'
-alias pg-prod-order='kubectl pg-tunnel --env production --db order-db'
+alias pg-staging-user='kubectl tcp-tunnel --env staging --db user-db'
+alias pg-prod-user='kubectl tcp-tunnel --env production --db user-db'
+alias pg-prod-order='kubectl tcp-tunnel --env production --db order-db'
 ```
 
 ### Use Different Ports for Different Environments
@@ -460,10 +646,10 @@ environments:
   # Use default port 5432
 
 # Connect to staging
-kubectl pg-tunnel --env staging --db user-db --local-port 5432
+kubectl tcp-tunnel --env staging --db user-db --local-port 5432
 
 # Connect to production simultaneously
-kubectl pg-tunnel --env production --db user-db --local-port 5433
+kubectl tcp-tunnel --env production --db user-db --local-port 5433
 ```
 
 ### Keep Tunnels Alive
@@ -472,13 +658,13 @@ Use `tmux` or `screen` to keep tunnels alive:
 
 ```bash
 # Start tmux session
-tmux new -s pg-tunnel
+tmux new -s tcp-tunnel
 
 # Create tunnel
-kubectl pg-tunnel --env staging --db user-db
+kubectl tcp-tunnel --env staging --db user-db
 
 # Detach: Ctrl+B then D
-# Reattach: tmux attach -t pg-tunnel
+# Reattach: tmux attach -t tcp-tunnel
 ```
 
 ### Connection Strings
@@ -495,7 +681,7 @@ pg_dump "postgresql://user@localhost:5432/db" > backup.sql
 
 ## Additional Resources
 
-- [Installation Guide](INSTALLATION.md) - How to install kubectl-pg-tunnel
+- [Installation Guide](INSTALLATION.md) - How to install kubectl-tcp-tunnel
 - [Development Guide](DEVELOPMENT.md) - Contributing and development setup
 - [Contributing Guidelines](../CONTRIBUTING.md) - How to contribute
-- [GitHub Issues](https://github.com/sgyyz/kubectl-pg-tunnel/issues) - Report bugs or request features
+- [GitHub Issues](https://github.com/sgyyz/kubectl-tcp-tunnel/issues) - Report bugs or request features

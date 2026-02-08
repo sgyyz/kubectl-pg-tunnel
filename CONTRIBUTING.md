@@ -1,6 +1,6 @@
-# Contributing to kubectl-pg-tunnel
+# Contributing to kubectl-tcp-tunnel
 
-Thank you for your interest in contributing to kubectl-pg-tunnel! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to kubectl-tcp-tunnel! This document provides guidelines and instructions for contributing.
 
 ## Code of Conduct
 
@@ -33,7 +33,7 @@ Environment:
 - bash: 5.2.15
 
 Steps to reproduce:
-1. Run: kubectl pg-tunnel -p staging staging_primary
+1. Run: kubectl tcp-tunnel -p staging staging_primary
 2. Wait for pod creation
 
 Expected: Pod becomes ready within 60 seconds
@@ -67,8 +67,8 @@ Feature requests are welcome! Please open an issue with:
 
 1. **Fork the repository**
    ```bash
-   git clone https://github.com/yourusername/kubectl-pg-tunnel.git
-   cd kubectl-pg-tunnel
+   git clone https://github.com/yourusername/kubectl-tcp-tunnel.git
+   cd kubectl-tcp-tunnel
    ```
 
 2. **Create a feature branch**
@@ -84,14 +84,14 @@ Feature requests are welcome! Please open an issue with:
 4. **Test your changes**
    ```bash
    # Run shellcheck
-   shellcheck kubectl-pg_tunnel install.sh uninstall.sh
+   shellcheck kubectl-tcp_tunnel install.sh uninstall.sh
 
    # Run tests
    bats tests/pg_tunnel_test.bats
 
    # Test installation
    ./install.sh
-   kubectl pg-tunnel --help
+   kubectl tcp-tunnel --help
    ```
 
 5. **Commit your changes**
@@ -245,7 +245,7 @@ When adding features, update:
 
 - **README.md** - Usage examples, configuration, troubleshooting
 - **Help text** - Update `show_help()` function
-- **Example config** - Update `pg-tunnel.conf.example`
+- **Example config** - Update `tcp-tunnel.conf.example`
 - **CHANGELOG** - Add entry for the change
 
 ## Testing
@@ -281,17 +281,17 @@ brew install shellcheck
 sudo apt-get install shellcheck
 
 # Run on all scripts
-shellcheck kubectl-pg_tunnel install.sh uninstall.sh
+shellcheck kubectl-tcp_tunnel install.sh uninstall.sh
 
 # Run with specific severity
-shellcheck -S warning kubectl-pg_tunnel
+shellcheck -S warning kubectl-tcp_tunnel
 ```
 
 ## Release Process
 
 Maintainers follow this process for releases:
 
-1. **Update version** - In `kubectl-pg_tunnel` and `install.sh`
+1. **Update version** - In `kubectl-tcp_tunnel` and `install.sh`
 2. **Update CHANGELOG** - Document all changes
 3. **Run all tests** - Ensure everything passes
 4. **Create tag** - `git tag -a v1.0.0 -m "Release v1.0.0"`
@@ -315,7 +315,7 @@ Contributors will be recognized in:
 - Release notes
 - GitHub contributors page
 
-Thank you for contributing to kubectl-pg-tunnel!
+Thank you for contributing to kubectl-tcp-tunnel!
 
 ## Commit Message Conventions
 

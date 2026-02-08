@@ -2,10 +2,10 @@
 
 set -euo pipefail
 
-# kubectl-pg-tunnel Uninstallation Script
+# kubectl-tcp-tunnel Uninstallation Script
 
-PLUGIN_NAME="kubectl-pg_tunnel"
-CONFIG_DIR="${HOME}/.config/kubectl-pg-tunnel"
+PLUGIN_NAME="kubectl-tcp_tunnel"
+CONFIG_DIR="${HOME}/.config/kubectl-tcp-tunnel"
 
 # Color codes
 RED='\033[0;31m'
@@ -33,7 +33,7 @@ print_warning() {
 print_header() {
     echo ""
     echo "======================================"
-    echo "  kubectl-pg-tunnel Uninstaller"
+    echo "  kubectl-tcp-tunnel Uninstaller"
     echo "======================================"
     echo ""
 }
@@ -174,7 +174,7 @@ verify_uninstall() {
     print_info "Verifying uninstallation..."
 
     if command -v kubectl >/dev/null 2>&1; then
-        if kubectl pg-tunnel --version >/dev/null 2>&1; then
+        if kubectl tcp-tunnel --version >/dev/null 2>&1; then
             print_warning "Plugin still accessible via kubectl"
             print_info "You may need to restart your shell"
             return 1
@@ -199,7 +199,7 @@ print_completion() {
     echo "  Uninstallation Complete!"
     echo "======================================"
     echo ""
-    echo "kubectl-pg-tunnel has been removed from your system."
+    echo "kubectl-tcp-tunnel has been removed from your system."
     echo ""
 
     if [[ -d "${CONFIG_DIR}" ]]; then
@@ -208,7 +208,7 @@ print_completion() {
         echo ""
     fi
 
-    echo "Thank you for using kubectl-pg-tunnel!"
+    echo "Thank you for using kubectl-tcp-tunnel!"
     echo ""
 }
 
@@ -216,7 +216,7 @@ print_completion() {
 main() {
     print_header
 
-    print_warning "This will uninstall kubectl-pg-tunnel from your system"
+    print_warning "This will uninstall kubectl-tcp-tunnel from your system"
     echo ""
     read -p "Continue with uninstallation? (y/n) " -n 1 -r
     echo ""

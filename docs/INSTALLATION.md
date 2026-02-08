@@ -1,6 +1,8 @@
 # Installation Guide
 
-Complete guide for installing kubectl-pg-tunnel.
+Complete guide for installing kubectl-tcp-tunnel.
+
+> **⚠️ Breaking Changes in v2.0**: The configuration format has changed to support generic TCP connections (not just PostgreSQL). If upgrading from v1.x, see the [Migration Guide](USAGE.md#migration-guide) in USAGE.md.
 
 ## Table of Contents
 
@@ -8,6 +10,7 @@ Complete guide for installing kubectl-pg-tunnel.
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Verification](#verification)
+- [Upgrading](#upgrading)
 - [Uninstallation](#uninstallation)
 
 ## Requirements
@@ -19,7 +22,7 @@ Complete guide for installing kubectl-pg-tunnel.
 
 ### Required Dependencies
 
-The following tools must be installed before using kubectl-pg-tunnel:
+The following tools must be installed before using kubectl-tcp-tunnel:
 
 | Tool | Purpose | Minimum Version |
 |------|---------|-----------------|
@@ -31,7 +34,7 @@ The following tools must be installed before using kubectl-pg-tunnel:
 
 - **Cluster Access**: Valid kubectl configuration with access to your cluster(s)
 - **Permissions**: Ability to create and delete pods in your target namespace
-- **Network Access**: Jump pods must be able to reach PostgreSQL hosts from within the cluster
+- **Network Access**: Jump pods must be able to reach target TCP services from within the cluster
 
 ## Installation
 
@@ -40,7 +43,7 @@ The following tools must be installed before using kubectl-pg-tunnel:
 Download and run the installation script:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-tcp-tunnel/main/install.sh | bash
 ```
 
 This will:
@@ -80,8 +83,8 @@ sudo dnf install -y kubectl kubectx yq
 #### Step 2: Clone Repository
 
 ```bash
-git clone https://github.com/sgyyz/kubectl-pg-tunnel.git
-cd kubectl-pg-tunnel
+git clone https://github.com/sgyyz/kubectl-tcp-tunnel.git
+cd kubectl-tcp-tunnel
 ```
 
 #### Step 3: Run Installer
@@ -128,19 +131,19 @@ source ~/.zshrc
 
 The installer creates an example configuration at:
 ```
-~/.config/kubectl-pg-tunnel/config.yaml
+~/.config/kubectl-tcp-tunnel/config.yaml
 ```
 
 ### Edit Configuration
 
 ```bash
-kubectl pg-tunnel edit-config
+kubectl tcp-tunnel edit-config
 ```
 
 Or manually:
 
 ```bash
-$EDITOR ~/.config/kubectl-pg-tunnel/config.yaml
+$EDITOR ~/.config/kubectl-tcp-tunnel/config.yaml
 ```
 
 ### Basic Configuration
@@ -151,26 +154,43 @@ Update the following settings:
 settings:
   # Your Kubernetes namespace where jump pods will be created
   namespace: default
-
-  # Leave these as defaults unless you have specific needs
   jump-pod-image: alpine/socat:latest
   jump-pod-wait-timeout: 60
-  local-port: 5432
-  db-port: 5432
+
+  # Define connection types with YAML anchors
+  postgres: &postgres
+    local-port: 15432
+    db-port: 5432
+
+  mysql: &mysql
+    local-port: 13306
+    db-port: 3306
+
+  redis: &redis
+    local-port: 16379
+    db-port: 6379
 
 environments:
   # Update with your actual Kubernetes context name
   staging:
     k8s-context: my-staging-cluster  # Change this!
-    databases:
-      user-db: user-db.staging.example.com  # Change this!
-      order-db: order-db.staging.example.com  # Change this!
+    connections:
+      user-db:
+        host: user-db.staging.example.com  # Change this!
+        type: *postgres
+      order-db:
+        host: order-db.staging.example.com  # Change this!
+        type: *mysql
 
   production:
     k8s-context: my-production-cluster  # Change this!
-    databases:
-      user-db: user-db.prod.example.com  # Change this!
-      order-db: order-db.prod.example.com  # Change this!
+    connections:
+      user-db:
+        host: user-db.prod.example.com  # Change this!
+        type: *postgres
+      order-db:
+        host: order-db.prod.example.com  # Change this!
+        type: *mysql
 ```
 
 ### Get Your Kubernetes Context Names
@@ -189,47 +209,84 @@ Use the context names from the output in your configuration.
 
 1. **Namespace**: Use a namespace where you have permissions to create/delete pods
 2. **Context Names**: Must exactly match your kubectl context names
-3. **Database Hosts**: Must be accessible from within your Kubernetes cluster
+3. **Service Hosts**: Must be accessible from within your Kubernetes cluster
 4. **Multiple Environments**: Add as many environments as needed
-5. **Database Aliases**: Use descriptive names (e.g., `user-db`, `order-db`, `analytics-db`)
+5. **Connection Aliases**: Use descriptive names (e.g., `user-db`, `order-db`, `cache`)
+6. **Connection Types**: Define reusable types using YAML anchors for different services
 
 ### Example Configuration
 
-Here's a complete example:
+Here's a complete example with multiple service types:
 
 ```yaml
 settings:
   namespace: infrastructure
   jump-pod-image: alpine/socat:latest
   jump-pod-wait-timeout: 60
-  local-port: 5432
-  db-port: 5432
+
+  # Connection type definitions
+  postgres: &postgres
+    local-port: 15432
+    db-port: 5432
+
+  mysql: &mysql
+    local-port: 13306
+    db-port: 3306
+
+  redis: &redis
+    local-port: 16379
+    db-port: 6379
+
+  mongodb: &mongodb
+    local-port: 17017
+    db-port: 27017
 
 environments:
   dev:
     k8s-context: dev-cluster-us-west
-    databases:
-      main: postgres.dev.internal.company.com
+    connections:
+      main:
+        host: postgres.dev.internal.company.com
+        type: *postgres
 
   staging:
     k8s-context: staging-cluster-us-west
-    databases:
-      user-db: user-db.staging.internal.company.com
-      order-db: order-db.staging.internal.company.com
-      analytics: analytics.staging.internal.company.com
+    connections:
+      user-db:
+        host: user-db.staging.internal.company.com
+        type: *postgres
+      order-db:
+        host: order-db.staging.internal.company.com
+        type: *mysql
+      cache:
+        host: redis.staging.internal.company.com
+        type: *redis
+      analytics:
+        host: mongo.staging.internal.company.com
+        type: *mongodb
 
   production:
     k8s-context: prod-cluster-us-west
-    databases:
-      user-db: user-db.prod.internal.company.com
-      order-db: order-db.prod.internal.company.com
-      analytics-replica: analytics-replica.prod.internal.company.com
+    connections:
+      user-db:
+        host: user-db.prod.internal.company.com
+        type: *postgres
+      order-db:
+        host: order-db.prod.internal.company.com
+        type: *mysql
+      analytics-replica:
+        host: mongo-replica.prod.internal.company.com
+        type: *mongodb
 
   production-eu:
     k8s-context: prod-cluster-eu-central
-    databases:
-      user-db: user-db.prod-eu.internal.company.com
-      order-db: order-db.prod-eu.internal.company.com
+    connections:
+      user-db:
+        host: user-db.prod-eu.internal.company.com
+        type: *postgres
+      order-db:
+        host: order-db.prod-eu.internal.company.com
+        type: *mysql
 ```
 
 ## Verification
@@ -238,9 +295,9 @@ environments:
 
 ```bash
 # Check if plugin is accessible
-kubectl pg-tunnel --version
+kubectl tcp-tunnel --version
 
-# Should output: kubectl pg-tunnel version 1.0.0
+# Should output: kubectl tcp-tunnel version 1.0.0
 ```
 
 ### Verify Dependencies
@@ -259,22 +316,26 @@ yq --version
 ### Verify Configuration
 
 ```bash
-# List configured environments and databases
-kubectl pg-tunnel ls
+# List configured environments and connections
+kubectl tcp-tunnel ls
 
 # Should display your configured environments
 ```
 
 ### Test Connection (Optional)
 
-If you have a test database accessible from your cluster:
+If you have a test service accessible from your cluster:
 
 ```bash
-# Create a tunnel
-kubectl pg-tunnel --env staging --db user-db
+# Create a tunnel to PostgreSQL
+kubectl tcp-tunnel --env staging --db user-db
 
 # In another terminal, test connection
-psql -h localhost -p 5432 -U your-username your-database
+psql -h localhost -p 15432 -U your-username your-database
+
+# Or test MySQL connection
+kubectl tcp-tunnel --env staging --db order-db
+mysql -h localhost -P 13306 -u your-username your-database
 ```
 
 Press Ctrl+C in the first terminal to stop the tunnel.
@@ -284,7 +345,7 @@ Press Ctrl+C in the first terminal to stop the tunnel.
 ### Method 1: Using the uninstall command (Recommended)
 
 ```bash
-kubectl pg-tunnel uninstall
+kubectl tcp-tunnel uninstall
 ```
 
 This command will:
@@ -296,14 +357,14 @@ This command will:
 ### Method 2: Direct uninstall script
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/uninstall.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-tcp-tunnel/main/uninstall.sh | bash
 ```
 
 ### Method 3: From cloned repository
 
 ```bash
 # If installed from the repository
-cd kubectl-pg-tunnel
+cd kubectl-tcp-tunnel
 ./uninstall.sh
 ```
 
@@ -311,13 +372,13 @@ cd kubectl-pg-tunnel
 
 ```bash
 # Remove the plugin
-rm -f ~/.local/bin/kubectl-pg_tunnel
+rm -f ~/.local/bin/kubectl-tcp_tunnel
 # Or if installed elsewhere:
-# rm -f ~/.krew/bin/kubectl-pg_tunnel
-# sudo rm -f /usr/local/bin/kubectl-pg_tunnel
+# rm -f ~/.krew/bin/kubectl-tcp_tunnel
+# sudo rm -f /usr/local/bin/kubectl-tcp_tunnel
 
 # Optionally remove configuration
-rm -rf ~/.config/kubectl-pg-tunnel
+rm -rf ~/.config/kubectl-tcp-tunnel
 ```
 
 ### Uninstall Options
@@ -370,7 +431,7 @@ Check your PATH:
 echo $PATH
 
 # Find where plugin was installed
-which kubectl-pg_tunnel
+which kubectl-tcp_tunnel
 
 # Add to PATH if needed (example for ~/.local/bin)
 echo 'export PATH="${PATH}:${HOME}/.local/bin"' >> ~/.bashrc
@@ -419,7 +480,7 @@ echo $PATH | grep -q ".local/bin" && echo "✓ In PATH"
 **Method 1: Using the upgrade command (Recommended)**
 
 ```bash
-kubectl pg-tunnel upgrade
+kubectl tcp-tunnel upgrade
 ```
 
 This command will:
@@ -434,7 +495,7 @@ If you installed using the quick install method (curl | bash):
 
 ```bash
 # Simply run the installer again
-curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-tcp-tunnel/main/install.sh | bash
 ```
 
 The installer will:
@@ -449,7 +510,7 @@ If you installed from a cloned repository:
 
 ```bash
 # Pull latest changes
-cd kubectl-pg-tunnel
+cd kubectl-tcp-tunnel
 git pull origin main
 
 # Run installer (will overwrite existing installation)
@@ -460,18 +521,18 @@ git pull origin main
 
 ```bash
 # Check current version
-kubectl pg-tunnel --version
+kubectl tcp-tunnel --version
 
 # Check latest version on GitHub
-# Visit: https://github.com/sgyyz/kubectl-pg-tunnel/releases
+# Visit: https://github.com/sgyyz/kubectl-tcp-tunnel/releases
 ```
 
 ## Post-Installation
 
 ### Next Steps
 
-1. **Configure**: Edit `~/.config/kubectl-pg-tunnel/config.yaml` with your settings
-2. **Verify**: Run `kubectl pg-tunnel ls` to see your environments
+1. **Configure**: Edit `~/.config/kubectl-tcp-tunnel/config.yaml` with your settings
+2. **Verify**: Run `kubectl tcp-tunnel ls` to see your environments
 3. **Test**: Create a test tunnel to verify everything works
 4. **Learn**: See [USAGE.md](USAGE.md) for detailed usage instructions
 
@@ -479,14 +540,14 @@ kubectl pg-tunnel --version
 
 ```bash
 # Create useful shell aliases
-echo 'alias pg-staging="kubectl pg-tunnel --env staging --db user-db"' >> ~/.bashrc
-echo 'alias pg-prod="kubectl pg-tunnel --env production --db user-db"' >> ~/.bashrc
+echo 'alias pg-staging="kubectl tcp-tunnel --env staging --db user-db"' >> ~/.bashrc
+echo 'alias pg-prod="kubectl tcp-tunnel --env production --db user-db"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
 ## Additional Resources
 
-- [Usage Guide](USAGE.md) - How to use kubectl-pg-tunnel
+- [Usage Guide](USAGE.md) - How to use kubectl-tcp-tunnel
 - [Development Guide](DEVELOPMENT.md) - Contributing and development setup
-- [GitHub Repository](https://github.com/sgyyz/kubectl-pg-tunnel)
-- [Report Issues](https://github.com/sgyyz/kubectl-pg-tunnel/issues)
+- [GitHub Repository](https://github.com/sgyyz/kubectl-tcp-tunnel)
+- [Report Issues](https://github.com/sgyyz/kubectl-tcp-tunnel/issues)

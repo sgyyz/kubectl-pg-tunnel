@@ -2,17 +2,18 @@
 
 set -euo pipefail
 
-# Development setup script for kubectl-pg-tunnel
+# Development setup script for kubectl-tcp-tunnel
 
-echo "kubectl-pg-tunnel - Development Setup"
+echo "kubectl-tcp-tunnel - Development Setup"
 echo "======================================"
 echo ""
 
 # Detect OS
-if [[ "$(uname)" == "Darwin" ]]; then
+UNAME_OS="$(uname)"
+if [[ "${UNAME_OS}" == "Darwin" ]]; then
     OS="macos"
     PKG_MGR="brew"
-elif [[ "$(uname)" == "Linux" ]]; then
+elif [[ "${UNAME_OS}" == "Linux" ]]; then
     OS="linux"
     if command -v apt-get &>/dev/null; then
         PKG_MGR="apt"
@@ -50,6 +51,10 @@ check_and_install() {
                 ;;
             dnf)
                 sudo dnf install -y "${install_name}"
+                ;;
+            *)
+                echo "Error: Unsupported package manager: ${PKG_MGR}"
+                exit 1
                 ;;
         esac
         echo "✓ ${install_name} installed"

@@ -1,18 +1,20 @@
-# kubectl-pg-tunnel
+# kubectl-tcp-tunnel
 
-[![CI](https://github.com/sgyyz/kubectl-pg-tunnel/actions/workflows/ci.yml/badge.svg)](https://github.com/sgyyz/kubectl-pg-tunnel/actions/workflows/ci.yml)
+[![CI](https://github.com/sgyyz/kubectl-tcp-tunnel/actions/workflows/ci.yml/badge.svg)](https://github.com/sgyyz/kubectl-tcp-tunnel/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A kubectl plugin that simplifies creating secure PostgreSQL tunnels through Kubernetes jump pods.
+A kubectl plugin that simplifies creating secure TCP tunnels through Kubernetes jump pods. Supports any TCP service including PostgreSQL, MySQL, Redis, MongoDB, and more.
 
 ## Overview
 
-`kubectl-pg-tunnel` helps you securely access remote PostgreSQL databases through your Kubernetes cluster without exposing databases directly to the internet. It automates the process of creating temporary jump pods, establishing port forwards, and cleaning up resources.
+`kubectl-tcp-tunnel` helps you securely access remote TCP services through your Kubernetes cluster without exposing them directly to the internet. It automates the process of creating temporary jump pods, establishing port forwards, and cleaning up resources.
 
 ### Key Features
 
-- **Simple database access** - Connect to remote databases with a single command
-- **Configuration-driven** - Define database aliases and environments in YAML
+- **Simple service access** - Connect to remote TCP services with a single command
+- **Multi-service support** - PostgreSQL, MySQL, Redis, MongoDB, and any TCP service
+- **Configuration-driven** - Define connection aliases and environments in YAML
+- **Type system** - Use YAML anchors to define reusable connection types
 - **Multi-environment** - Support staging, production, and custom environments
 - **Automatic cleanup** - Jump pods are automatically deleted when you disconnect
 - **Safe by default** - Uses kubectx for explicit context switching
@@ -23,18 +25,18 @@ A kubectl plugin that simplifies creating secure PostgreSQL tunnels through Kube
 ```
 ┌──────────────┐         ┌─────────────────┐         ┌──────────────┐
 │              │         │   Kubernetes    │         │              │
-│  Your Local  │────────▶│    Cluster      │────────▶│  PostgreSQL  │
-│   Machine    │  Port   │   (Jump Pod)    │  Network│   Database   │
-│              │  Forward│                 │  Access │              │
+│  Your Local  │────────▶│    Cluster      │────────▶│  TCP Service │
+│   Machine    │  Port   │   (Jump Pod)    │  Network│ (Postgres/   │
+│              │  Forward│                 │  Access │  MySQL/etc)  │
 └──────────────┘         └─────────────────┘         └──────────────┘
-   localhost:5432         alpine/socat pod           remote-db:5432
+   localhost:port         alpine/socat pod          remote-host:port
 ```
 
 1. Plugin switches to the correct Kubernetes context (via kubectx)
 2. Creates a temporary jump pod running alpine/socat in your cluster
-3. Jump pod connects to the remote PostgreSQL host
-4. kubectl port-forward tunnels localhost:5432 to the jump pod
-5. You connect with psql or any PostgreSQL client to localhost:5432
+3. Jump pod connects to the remote TCP service host
+4. kubectl port-forward tunnels your local port to the jump pod
+5. You connect with any client to localhost:port
 6. When you disconnect (Ctrl+C), the jump pod is automatically deleted
 
 ## Quick Start
@@ -42,7 +44,7 @@ A kubectl plugin that simplifies creating secure PostgreSQL tunnels through Kube
 ### Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-tcp-tunnel/main/install.sh | bash
 ```
 
 ### Upgrade
@@ -50,29 +52,29 @@ curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/instal
 Upgrade to the latest version using the built-in command:
 
 ```bash
-kubectl pg-tunnel upgrade
+kubectl tcp-tunnel upgrade
 ```
 
 Or run the install script again:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-tcp-tunnel/main/install.sh | bash
 ```
 
 The installer will backup your existing installation and preserve your configuration.
 
 ### Uninstall
 
-To uninstall kubectl-pg-tunnel:
+To uninstall kubectl-tcp-tunnel:
 
 ```bash
-kubectl pg-tunnel uninstall
+kubectl tcp-tunnel uninstall
 ```
 
 Or run the uninstall script directly:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/main/uninstall.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-tcp-tunnel/main/uninstall.sh | bash
 ```
 
 The uninstaller will prompt you whether to remove your configuration files.
@@ -80,37 +82,70 @@ The uninstaller will prompt you whether to remove your configuration files.
 ### Configure
 
 ```bash
-kubectl pg-tunnel edit-config
+kubectl tcp-tunnel edit-config
 ```
 
-Update with your Kubernetes contexts and database hosts:
+Update with your Kubernetes contexts and service hosts:
 
 ```yaml
 settings:
   namespace: default
 
+  # Define connection types with YAML anchors
+  postgres: &postgres
+    local-port: 15432
+    db-port: 5432
+
+  mysql: &mysql
+    local-port: 13306
+    db-port: 3306
+
+  redis: &redis
+    local-port: 16379
+    db-port: 6379
+
 environments:
   staging:
     k8s-context: my-staging-cluster
-    databases:
-      user-db: user-db.staging.example.com
-      order-db: order-db.staging.example.com
+    connections:
+      user-db:
+        host: user-db.staging.example.com
+        type: *postgres
+      order-db:
+        host: order-db.staging.example.com
+        type: *mysql
+      cache:
+        host: redis.staging.example.com
+        type: *redis
 
   production:
     k8s-context: my-production-cluster
-    databases:
-      user-db: user-db.prod.example.com
-      order-db: order-db.prod.example.com
+    connections:
+      user-db:
+        host: user-db.prod.example.com
+        type: *postgres
+      order-db:
+        host: order-db.prod.example.com
+        type: *mysql
 ```
 
 ### Use
 
 ```bash
-# Create tunnel to staging user database
-kubectl pg-tunnel --env staging --db user-db
+# Create tunnel to staging PostgreSQL database
+kubectl tcp-tunnel --env staging --db user-db
+# Connect: psql -h localhost -p 15432 -U myuser mydatabase
 
-# In another terminal, connect with psql
-psql -h localhost -p 5432 -U myuser mydatabase
+# Create tunnel to staging MySQL database
+kubectl tcp-tunnel --env staging --db order-db
+# Connect: mysql -h localhost -P 13306 -u myuser mydatabase
+
+# Create tunnel to Redis cache
+kubectl tcp-tunnel --env staging --db cache
+# Connect: redis-cli -h localhost -p 16379
+
+# Override local port
+kubectl tcp-tunnel --env staging --db user-db --local-port 5433
 ```
 
 ## Requirements
@@ -139,7 +174,7 @@ sudo apt-get install kubectl kubectx yq
 
 ## Security
 
-- **No direct exposure** - Database never exposed to the internet
+- **No direct exposure** - Services never exposed to the internet
 - **Temporary access** - Jump pods exist only during your session
 - **Context isolation** - Explicit context switching prevents accidents
 - **Network policies** - Respects your cluster's network policies
@@ -152,8 +187,8 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
 For development setup:
 
 ```bash
-git clone https://github.com/sgyyz/kubectl-pg-tunnel.git
-cd kubectl-pg-tunnel
+git clone https://github.com/sgyyz/kubectl-tcp-tunnel.git
+cd kubectl-tcp-tunnel
 make dev-setup      # Install dependencies
 make setup-hooks    # Set up pre-commit hooks
 make check          # Run all checks
@@ -167,9 +202,9 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Links
 
-- **GitHub**: https://github.com/sgyyz/kubectl-pg-tunnel
-- **Issues**: https://github.com/sgyyz/kubectl-pg-tunnel/issues
-- **Releases**: https://github.com/sgyyz/kubectl-pg-tunnel/releases
+- **GitHub**: https://github.com/sgyyz/kubectl-tcp-tunnel
+- **Issues**: https://github.com/sgyyz/kubectl-tcp-tunnel/issues
+- **Releases**: https://github.com/sgyyz/kubectl-tcp-tunnel/releases
 
 ## Acknowledgments
 
@@ -180,4 +215,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-Made with ❤️ for Kubernetes and PostgreSQL users
+Made with ❤️ for Kubernetes users
