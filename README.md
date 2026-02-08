@@ -1,6 +1,6 @@
 # kubectl-tcp-tunnel
 
-[![CI](https://github.com/sgyyz/kubectl-tcp-tunnel/actions/workflows/ci.yml/badge.svg)](https://github.com/sgyyz/kubectl-tcp-tunnel/actions/workflows/ci.yml)
+[![CI](https://github.com/sgyyz/kubectl-tcp-tunnel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sgyyz/kubectl-tcp-tunnel/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A kubectl plugin that simplifies creating secure TCP tunnels through Kubernetes jump pods. Supports any TCP service including PostgreSQL, MySQL, Redis, MongoDB, and more.
