@@ -39,7 +39,7 @@ lint:
 		shellcheck install.sh && \
 		shellcheck uninstall.sh && \
 		shellcheck dev-setup.sh && \
-		echo "✓ All shellcheck tests passed!"; \
+		echo "✅ All shellcheck tests passed!"; \
 	else \
 		echo "Error: shellcheck not found. Install with: brew install shellcheck"; \
 		exit 1; \
@@ -55,7 +55,7 @@ test:
 	fi
 
 check: lint test
-	@echo "✓ All checks passed!"
+	@echo "✅ All checks passed!"
 
 install:
 	@echo "Installing kubectl-tcp-tunnel..."
@@ -69,14 +69,14 @@ clean:
 	@echo "Cleaning temporary files..."
 	@find . -name "*.log" -delete
 	@find . -name "*.tmp" -delete
-	@echo "✓ Clean complete"
+	@echo "✅ Clean complete"
 
 setup-hooks:
 	@echo "Setting up git hooks..."
 	@if [ -d .git ]; then \
 		git config core.hooksPath .githooks && \
-		echo "✓ Git hooks configured to use .githooks/"; \
-		echo "✓ Pre-commit hook will run shellcheck automatically"; \
+		echo "✅ Git hooks configured to use .githooks/"; \
+		echo "✅ Pre-commit hook will run shellcheck automatically"; \
 	else \
 		echo "Error: Not a git repository"; \
 		exit 1; \
@@ -113,7 +113,7 @@ release:
 		echo "Please pull the latest changes first: git pull origin main"; \
 		exit 1; \
 	fi
-	@echo "✓ On main branch and up-to-date"
+	@echo "✅ On main branch and up-to-date"
 	@echo ""
 	@echo "Preparing release v$(VERSION)..."
 	@./scripts/prepare-release.sh $(VERSION)
@@ -123,7 +123,7 @@ release:
 	@git commit -m "Release v$(VERSION)"
 	@git tag -a "v$(VERSION)" -m "Release v$(VERSION)"
 	@echo ""
-	@echo "✓ Release v$(VERSION) created!"
+	@echo "✅ Release v$(VERSION) created!"
 	@echo ""
 	@echo "Next step: Push to GitHub"
 	@echo "  git push origin main --tags"
