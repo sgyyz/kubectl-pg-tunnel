@@ -61,74 +61,6 @@ Or run the install script again:
 curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-tcp-tunnel/main/install.sh | bash
 ```
 
-The installer will backup your existing installation and preserve your configuration.
-
-### Uninstall
-
-To uninstall kubectl-tcp-tunnel:
-
-```bash
-kubectl tcp-tunnel uninstall
-```
-
-Or run the uninstall script directly:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-tcp-tunnel/main/uninstall.sh | bash
-```
-
-The uninstaller will prompt you whether to remove your configuration files.
-
-### Configure
-
-```bash
-kubectl tcp-tunnel edit-config
-```
-
-Update with your Kubernetes contexts and service hosts:
-
-```yaml
-settings:
-  namespace: default
-
-  # Define connection types with YAML anchors
-  postgres: &postgres
-    local-port: 15432
-    db-port: 5432
-
-  mysql: &mysql
-    local-port: 13306
-    db-port: 3306
-
-  redis: &redis
-    local-port: 16379
-    db-port: 6379
-
-environments:
-  staging:
-    k8s-context: my-staging-cluster
-    connections:
-      user-db:
-        host: user-db.staging.example.com
-        type: *postgres
-      order-db:
-        host: order-db.staging.example.com
-        type: *mysql
-      cache:
-        host: redis.staging.example.com
-        type: *redis
-
-  production:
-    k8s-context: my-production-cluster
-    connections:
-      user-db:
-        host: user-db.prod.example.com
-        type: *postgres
-      order-db:
-        host: order-db.prod.example.com
-        type: *mysql
-```
-
 ### Use
 
 ```bash
@@ -183,18 +115,6 @@ sudo apt-get install kubectl kubectx yq
 ## Contributing
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-For development setup:
-
-```bash
-git clone https://github.com/sgyyz/kubectl-tcp-tunnel.git
-cd kubectl-tcp-tunnel
-make dev-setup      # Install dependencies
-make setup-hooks    # Set up pre-commit hooks
-make check          # Run all checks
-```
-
-See [DEVELOPMENT.md](docs/DEVELOPMENT.md) for detailed documentation.
 
 ## License
 
