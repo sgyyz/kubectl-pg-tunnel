@@ -35,7 +35,17 @@ fi
 
 # Step 2: Update version in kubectl-pg_tunnel
 echo "Step 2: Updating kubectl-pg_tunnel..."
-sed -i.bak "s/__VERSION__/v${VERSION}/g" kubectl-pg_tunnel
+# Extract current version from kubectl-pg_tunnel
+# shellcheck disable=SC2016
+CURRENT_VERSION=$(grep 'VERSION="\${KUBECTL_PG_TUNNEL_VERSION:-' kubectl-pg_tunnel | head -1 | sed 's/.*:-\([^}]*\)}.*/\1/')
+if [[ -z "${CURRENT_VERSION}" ]]; then
+    echo "Error: Could not detect current version in kubectl-pg_tunnel"
+    exit 1
+fi
+echo "  Current version: ${CURRENT_VERSION}"
+echo "  New version: v${VERSION}"
+# Replace current version with new version
+sed -i.bak "s/VERSION=\"\\\${KUBECTL_PG_TUNNEL_VERSION:-${CURRENT_VERSION}}\"/VERSION=\"\\\${KUBECTL_PG_TUNNEL_VERSION:-v${VERSION}}\"/g" kubectl-pg_tunnel
 rm kubectl-pg_tunnel.bak
 
 # Step 3: Update version in install.sh

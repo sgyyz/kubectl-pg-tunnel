@@ -21,11 +21,10 @@ help:
 	@echo "  3. make check        (verify everything works)"
 	@echo ""
 	@echo "Release process:"
-	@echo "  1. make release VERSION=1.0.0  (updates CHANGELOG and versions)"
-	@echo "  2. git commit -am 'Release v1.0.0'"
-	@echo "  3. git tag -a v1.0.0 -m 'Release v1.0.0'"
-	@echo "  4. git push origin main --tags"
-	@echo "  5. GitHub Actions creates release with assets"
+	@echo "  1. Ensure you're on main branch and up-to-date"
+	@echo "  2. make release VERSION=1.0.0  (updates, commits, and tags)"
+	@echo "  3. git push origin main --tags"
+	@echo "  4. GitHub Actions creates release with assets"
 	@echo ""
 	@echo "Prerequisites:"
 	@echo "  shellcheck - brew install shellcheck"
@@ -92,8 +91,42 @@ release:
 		echo "Usage: make release VERSION=1.0.0"; \
 		exit 1; \
 	fi
+	@echo "Checking git status..."
+	@# Check if on main branch
+	@if [ "$$(git rev-parse --abbrev-ref HEAD)" != "main" ]; then \
+		echo "Error: Must be on main branch to create a release"; \
+		echo "Current branch: $$(git rev-parse --abbrev-ref HEAD)"; \
+		exit 1; \
+	fi
+	@# Check if working directory is clean
+	@if [ -n "$$(git status --porcelain)" ]; then \
+		echo "Error: Working directory is not clean"; \
+		echo "Please commit or stash your changes first"; \
+		git status --short; \
+		exit 1; \
+	fi
+	@# Check if up-to-date with remote
+	@git fetch origin main
+	@if [ "$$(git rev-parse HEAD)" != "$$(git rev-parse origin/main)" ]; then \
+		echo "Error: Local main branch is not up-to-date with origin/main"; \
+		echo "Please pull the latest changes first: git pull origin main"; \
+		exit 1; \
+	fi
+	@echo "✓ On main branch and up-to-date"
+	@echo ""
 	@echo "Preparing release v$(VERSION)..."
 	@./scripts/prepare-release.sh $(VERSION)
 	@echo ""
-	@echo "Release prepared! Review changes and then:"
+	@echo "Committing and tagging release..."
+	@git add kubectl-pg_tunnel install.sh CHANGELOG.md
+	@git commit -m "Release v$(VERSION)"
+	@git tag -a "v$(VERSION)" -m "Release v$(VERSION)"
+	@echo ""
+	@echo "✓ Release v$(VERSION) created!"
+	@echo ""
+	@echo "Next step: Push to GitHub"
 	@echo "  git push origin main --tags"
+	@echo ""
+	@echo "This will trigger GitHub Actions to:"
+	@echo "  - Package the release files"
+	@echo "  - Create GitHub release with assets"

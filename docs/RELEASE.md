@@ -6,8 +6,8 @@ This document describes how to create a new release of kubectl-pg-tunnel.
 
 - Write access to the repository
 - All tests passing (`make check`)
-- Updated CHANGELOG.md
-- Clean working directory
+- On main branch and up-to-date with remote
+- Clean working directory (no uncommitted changes)
 
 ## Version Numbering
 
@@ -20,82 +20,68 @@ We follow [Semantic Versioning](https://semver.org/):
 
 ## Release Steps
 
-### 1. Update CHANGELOG.md
+The release process is fully automated through the Makefile. Here's how to create a release:
 
-Edit `CHANGELOG.md` and move items from `[Unreleased]` to a new version section:
-
-```markdown
-## [1.0.0] - 2024-01-15
-
-### Added
-- Feature A
-- Feature B
-
-### Fixed
-- Bug fix A
-```
-
-Update the comparison links at the bottom:
-
-```markdown
-[Unreleased]: https://github.com/sgyyz/kubectl-pg-tunnel/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/sgyyz/kubectl-pg-tunnel/releases/tag/v1.0.0
-```
-
-### 2. Commit CHANGELOG
+### 1. Ensure Clean State
 
 ```bash
-git add CHANGELOG.md
-git commit -m "Update CHANGELOG for v1.0.0"
+# Make sure you're on main and up-to-date
+git checkout main
+git pull origin main
+
+# Verify no uncommitted changes
+git status
+
+# Run tests
+make check
 ```
 
-### 3. Prepare Release
+### 2. Create Release
 
-Use the Makefile to prepare the release:
+Run a single command to create the release:
 
 ```bash
 make release VERSION=1.0.0
 ```
 
-This will:
-- Update version placeholder in `kubectl-pg_tunnel`
-- Update version in `install.sh`
-- Show you the next steps
+This command will automatically:
+1. **Verify prerequisites:**
+   - Check you're on main branch
+   - Verify working directory is clean
+   - Ensure local main is up-to-date with origin/main
 
-### 4. Review Changes
+2. **Update CHANGELOG.md:**
+   - Analyze commits since last release
+   - Categorize changes (Added, Fixed, Changed, etc.)
+   - Generate new version section with today's date
+   - Support conventional commits (feat:, fix:, docs:, etc.)
+
+3. **Update versions:**
+   - Update `kubectl-pg_tunnel` to new version (e.g., v1.0.0 → v1.0.1)
+   - Update `install.sh` to new version
+
+4. **Commit and tag:**
+   - Create commit: "Release v1.0.0"
+   - Create annotated tag: v1.0.0
+   - Ready to push
+
+### 3. Push to GitHub
 
 ```bash
-git diff
-```
-
-Verify that:
-- `kubectl-pg_tunnel` has `VERSION="v1.0.0"` (not `__VERSION__`)
-- `install.sh` has `VERSION="1.0.0"`
-
-### 5. Commit and Tag
-
-```bash
-# Commit version changes
-git commit -am "Release v1.0.0"
-
-# Create annotated tag
-git tag -a v1.0.0 -m "Release v1.0.0"
-
-# Push to main and tags
 git push origin main --tags
 ```
 
-### 6. Automated Release
+### 4. Automated GitHub Release
 
 Once you push the tag, GitHub Actions will automatically:
-1. Update version placeholders
-2. Run all tests
-3. Create release archive
-4. Generate checksums
-5. Create GitHub Release with:
+1. Package release files into tarball
+2. Generate checksums
+3. Extract release notes from CHANGELOG.md
+4. Create GitHub Release with:
    - Release notes
    - Download links
    - Installation instructions
+   - Release assets
 
 ### 7. Verify Release
 
@@ -116,70 +102,46 @@ Once you push the tag, GitHub Actions will automatically:
 - Announce in relevant channels
 - Close related issues/PRs
 
-## Manual Release (if needed)
+## Quick Reference
 
-If GitHub Actions fails, you can create a manual release:
-
-### 1. Prepare Files
+The entire release process in one command:
 
 ```bash
-VERSION=1.0.0
-
-# Update version in files
-sed -i "s/__VERSION__/v${VERSION}/g" kubectl-pg_tunnel
-sed -i "s/VERSION=\".*\"/VERSION=\"${VERSION}\"/g" install.sh
-
-# Create archive
-mkdir -p release
-cp kubectl-pg_tunnel release/
-cp install.sh release/
-cp uninstall.sh release/
-cp -r config release/
-cp README.md LICENSE release/
-
-cd release
-tar -czf ../kubectl-pg-tunnel-v${VERSION}.tar.gz *
-cd ..
-
-# Create checksums
-sha256sum kubectl-pg-tunnel-v${VERSION}.tar.gz > checksums.txt
+# Prerequisites: on main, up-to-date, clean working directory, tests pass
+make release VERSION=1.0.0   # Updates, commits, and tags
+git push origin main --tags  # Triggers GitHub Actions to publish
 ```
 
-### 2. Create GitHub Release
-
-1. Go to https://github.com/sgyyz/kubectl-pg-tunnel/releases/new
-2. Choose your tag
-3. Add release notes
-4. Upload files:
-   - `kubectl-pg-tunnel-v1.0.0.tar.gz`
-   - `checksums.txt`
-5. Publish release
+That's it! The rest is automated.
 
 ## Post-Release
 
-### 1. Prepare for Next Release
+### 1. Verify Release
 
-Update `CHANGELOG.md` with new `[Unreleased]` section:
+1. Visit https://github.com/sgyyz/kubectl-pg-tunnel/releases
+2. Verify the new release appears
+3. Check that assets are attached:
+   - `kubectl-pg-tunnel-v1.0.0.tar.gz`
+   - `checksums.txt`
+   - Individual files
 
-```markdown
-## [Unreleased]
+### 2. Test Installation
 
-### Added
-
-### Changed
-
-### Fixed
-```
-
-Commit:
+Test the installation from the new release:
 
 ```bash
-git add CHANGELOG.md
-git commit -m "Prepare CHANGELOG for next release"
-git push origin main
+curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-pg-tunnel/v1.0.0/install.sh | bash
 ```
 
-### 2. Verify Update Detection
+### 3. Test Upgrade Command
+
+Test that existing users can upgrade:
+
+```bash
+kubectl pg-tunnel upgrade
+```
+
+### 4. Verify Update Detection
 
 Test that version checking works:
 
@@ -188,6 +150,12 @@ kubectl pg-tunnel --version
 ```
 
 Should show current version and notify if update is available.
+
+### 5. Announce
+
+- Update README.md badges if needed
+- Announce in relevant channels
+- Close related issues/PRs
 
 ## Hotfix Releases
 
