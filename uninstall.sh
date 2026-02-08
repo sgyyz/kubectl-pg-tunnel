@@ -15,19 +15,19 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 print_error() {
-    echo -e "${RED}ERROR:${NC} $*" >&2
+    echo -e "${RED}❌ ERROR:${NC} $*" >&2
 }
 
 print_success() {
-    echo -e "${GREEN}✓${NC} $*"
+    echo -e "${GREEN}✅${NC} $*"
 }
 
 print_info() {
-    echo -e "${BLUE}→${NC} $*"
+    echo -e "${BLUE}🔵${NC} $*"
 }
 
 print_warning() {
-    echo -e "${YELLOW}⚠${NC} $*"
+    echo -e "${YELLOW}⚠️${NC}  $*"
 }
 
 print_header() {

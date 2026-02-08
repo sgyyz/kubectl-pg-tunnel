@@ -38,9 +38,9 @@ check_and_install() {
     local install_name="${2:-$1}"
 
     if command -v "${cmd}" &>/dev/null; then
-        echo "✓ ${cmd} is already installed"
+        echo "✅ ${cmd} is already installed"
     else
-        echo "→ Installing ${install_name}..."
+        echo "🔵 Installing ${install_name}..."
         case "${PKG_MGR}" in
             brew)
                 brew install "${install_name}"
@@ -57,7 +57,7 @@ check_and_install() {
                 exit 1
                 ;;
         esac
-        echo "✓ ${install_name} installed"
+        echo "✅ ${install_name} installed"
     fi
 }
 
@@ -79,7 +79,7 @@ check_and_install yq yq
 
 echo ""
 echo "======================================"
-echo "✓ Development setup complete!"
+echo "✅ Development setup complete!"
 echo "======================================"
 echo ""
 echo "Next steps:"
