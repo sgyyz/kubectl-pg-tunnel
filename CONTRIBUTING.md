@@ -87,7 +87,7 @@ Feature requests are welcome! Please open an issue with:
    shellcheck kubectl-tcp_tunnel install.sh uninstall.sh
 
    # Run tests
-   bats tests/pg_tunnel_test.bats
+   bats tests/tcp_tunnel_test.bats
 
    # Test installation
    ./install.sh
@@ -264,10 +264,10 @@ sudo apt-get install bats
 sudo dnf install bats
 
 # Run all tests
-bats tests/pg_tunnel_test.bats
+bats tests/tcp_tunnel_test.bats
 
 # Run specific test
-bats tests/pg_tunnel_test.bats -f "test name"
+bats tests/tcp_tunnel_test.bats -f "test name"
 ```
 
 ### Running Shellcheck

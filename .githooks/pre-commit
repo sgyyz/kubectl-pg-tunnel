@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Pre-commit hook for kubectl-pg-tunnel
+# Pre-commit hook for kubectl-tcp-tunnel
 # Runs shellcheck on all modified shell scripts
 
 set -e
@@ -22,7 +22,7 @@ if ! command -v shellcheck &>/dev/null; then
 fi
 
 # Get list of staged shell scripts
-FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(sh|bash)$|^kubectl-pg_tunnel$' || true)
+FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(sh|bash)$|^kubectl-tcp_tunnel$' || true)
 
 if [ -z "$FILES" ]; then
     echo -e "${GREEN}✓ No shell scripts to check${NC}"

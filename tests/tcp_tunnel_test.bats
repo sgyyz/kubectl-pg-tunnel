@@ -424,7 +424,18 @@ EOSCRIPT
     suffix=$(bash -c '
         generate_random_suffix() {
             local length="${1:-6}"
-            LC_ALL=C tr -dc "a-z0-9" < /dev/urandom | head -c "${length}" || echo "$(date +%s | sha256sum | head -c "${length}")"
+            local suffix
+            # Try to generate random suffix from /dev/urandom
+            suffix=$(LC_ALL=C tr -dc "a-z0-9" < /dev/urandom 2>/dev/null | head -c "${length}" || true)
+
+            # Fallback to timestamp-based generation if urandom fails
+            if [[ -z "${suffix}" ]] || [[ ${#suffix} -ne ${length} ]]; then
+                local timestamp
+                timestamp=$(date +%s)
+                suffix=$(printf "%s" "${timestamp}" | sha256sum 2>/dev/null | head -c "${length}" || printf "%s" "${timestamp}" | head -c "${length}")
+            fi
+
+            echo "${suffix}"
         }
         generate_random_suffix 6
     ')
