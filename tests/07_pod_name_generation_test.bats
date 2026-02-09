@@ -12,33 +12,15 @@ teardown() {
     teardown_test_environment
 }
 
-@test "generate_random_suffix creates 6 character string" {
-    # Test the function by calling it via bash
-    local suffix
-    suffix=$(bash -c '
-        generate_random_suffix() {
-            local length="${1:-6}"
-            local suffix
-            # Try to generate random suffix from /dev/urandom
-            suffix=$(LC_ALL=C tr -dc "a-z0-9" < /dev/urandom 2>/dev/null | head -c "${length}" || true)
+@test "pod name uses hostname suffix" {
+    # Get the current hostname that would be used
+    local hostname_suffix
+    hostname_suffix=$(hostname -s 2>/dev/null || hostname | cut -d. -f1)
+    hostname_suffix=$(echo "${hostname_suffix}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/^-*//' | sed 's/-*$//')
 
-            # Fallback to timestamp-based generation if urandom fails
-            if [[ -z "${suffix}" ]] || [[ ${#suffix} -ne ${length} ]]; then
-                local timestamp
-                timestamp=$(date +%s)
-                suffix=$(printf "%s" "${timestamp}" | sha256sum 2>/dev/null | head -c "${length}" || printf "%s" "${timestamp}" | head -c "${length}")
-            fi
-
-            echo "${suffix}"
-        }
-        generate_random_suffix 6
-    ')
-
-    # Check length is 6
-    [ ${#suffix} -eq 6 ]
-
-    # Check it contains only lowercase alphanumeric
-    [[ "$suffix" =~ ^[a-z0-9]+$ ]]
+    # Check hostname suffix is valid
+    [ -n "${hostname_suffix}" ]
+    [[ "${hostname_suffix}" =~ ^[a-z0-9-]+$ ]]
 }
 
 @test "uses kubectx for context switching" {

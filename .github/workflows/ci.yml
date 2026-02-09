@@ -53,6 +53,7 @@ jobs:
           - "05_port_configuration_test.bats"
           - "06_connection_types_test.bats"
           - "07_pod_name_generation_test.bats"
+          - "08_cleanup_command_test.bats"
 
     steps:
       - name: Checkout code

@@ -177,16 +177,29 @@ When the tunnel is established, you'll see:
 
 ```
 ✓ Switched to context: my-staging-cluster
-✓ Created jump pod: pg-jump-user-db
+✓ Created jump pod: postgres-tunnel-johns-macbook
 ✓ Pod is ready
 
 ✓ Tunnel established!
-→ Local:  localhost:5432
+→ Local:  localhost:15432
 → Remote: user-db.staging.example.com:5432
 
-→ Connect with: psql -h localhost -p 5432 -U <username> <database>
+→ You can now connect to localhost:15432
 
-⚠ Press Ctrl+C to stop the tunnel and clean up
+⚠ Press Ctrl+C to stop port forwarding (pod will remain for reuse)
+→ To manually delete pod, run: kubectl tcp-tunnel cleanup
+```
+
+On subsequent connections, you'll see pod reuse:
+
+```
+✓ Switched to context: my-staging-cluster
+✓ Found existing running pod: postgres-tunnel-johns-macbook
+→ Reusing existing pod...
+
+✓ Tunnel established!
+→ Local:  localhost:15432
+→ Remote: user-db.staging.example.com:5432
 ```
 
 ### List Resources
@@ -250,6 +263,33 @@ kubectl tcp-tunnel uninstall
 ```
 
 Uninstalls kubectl-tcp-tunnel. You'll be prompted whether to remove configuration files.
+
+### Cleanup Jump Pods
+
+```bash
+kubectl tcp-tunnel cleanup
+```
+
+Deletes all jump pods created by this machine. Jump pods are now reused across connections for faster reconnection, but you can manually clean them up when finished.
+
+**Pod reuse behavior:**
+- Pods are named using your machine's hostname (e.g., `postgres-tunnel-johns-macbook`)
+- Reconnecting to the same service reuses the existing pod (no creation delay)
+- Pods remain running after Ctrl+C for quick reconnection
+- Use `cleanup` command to delete all your machine's jump pods
+
+**Example workflow:**
+```bash
+# First connection - creates pod
+kubectl tcp-tunnel -e staging -c user-db
+# Press Ctrl+C to stop port forwarding
+
+# Second connection - reuses pod (faster!)
+kubectl tcp-tunnel -e staging -c user-db
+
+# When finished for the day
+kubectl tcp-tunnel cleanup
+```
 
 ## Examples
 

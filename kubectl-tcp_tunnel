@@ -82,6 +82,7 @@ OPTIONS:
 SUBCOMMANDS:
     ls [environment]       List available environments and connections
                            Optionally filter by environment
+    cleanup                Delete the jump pod(s) for this machine
     edit-config            Open configuration file in \$EDITOR
     upgrade                Upgrade to the latest version
     uninstall              Uninstall kubectl-tcp-tunnel
@@ -120,10 +121,10 @@ ENVIRONMENT VARIABLES:
 
 HOW IT WORKS:
     1. Switches to the appropriate Kubernetes context (via kubectx)
-    2. Creates a temporary jump pod using alpine/socat
+    2. Creates or reuses a jump pod using alpine/socat (one pod per machine)
     3. Forwards local port to remote TCP service host:port
-    4. Keeps the tunnel open until you press Ctrl+C
-    5. Cleans up the jump pod on exit
+    4. Press Ctrl+C to stop port forwarding (pod remains for reuse)
+    5. Use 'cleanup' subcommand to manually delete pods
 
 For more information, visit: https://github.com/sgyyz/kubectl-tcp-tunnel
 EOF
@@ -492,12 +493,13 @@ cleanup() {
     local namespace="$3"
 
     print_info "Cleaning up..."
+    print_info "Port forwarding terminated"
 
-    # Delete the jump pod
-    if kubectl --context="${context}" -n "${namespace}" get pod "${pod_name}" &>/dev/null; then
-        kubectl --context="${context}" -n "${namespace}" delete pod "${pod_name}" --grace-period=0 --force &>/dev/null || true
-        print_success "Deleted jump pod: ${pod_name}"
-    fi
+    # Note: Pod is left running for reuse
+    # To manually delete the pod, run:
+    # kubectl delete pod ${pod_name} -n ${namespace} --context=${context}
+
+    print_success "Cleanup complete (pod still running for reuse)"
 }
 
 # Create tunnel
@@ -554,20 +556,23 @@ create_tunnel() {
         exit 1
     fi
 
-    # Generate pod name with connection type prefix and random suffix
+    # Generate pod name with connection type prefix and hostname suffix
     local connection_type
     connection_type=$(get_connection_type "${environment}" "${connection}")
 
-    local random_suffix
-    random_suffix=$(generate_random_suffix 6)
+    # Get local machine hostname (sanitized for Kubernetes)
+    local hostname_suffix
+    hostname_suffix=$(hostname -s 2>/dev/null || hostname | cut -d. -f1)
+    # Sanitize hostname: lowercase, replace invalid chars with hyphens
+    hostname_suffix=$(echo "${hostname_suffix}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/^-*//' | sed 's/-*$//')
 
     local pod_name
     if [[ -n "${connection_type}" ]] && [[ "${connection_type}" != "null" ]]; then
-        # Use connection type as prefix (e.g., postgres-tunnel-a1b2c3)
-        pod_name="${connection_type}-tunnel-${random_suffix}"
+        # Use connection type as prefix (e.g., postgres-tunnel-johns-macbook)
+        pod_name="${connection_type}-tunnel-${hostname_suffix}"
     else
-        # Fallback to generic name (e.g., tcp-tunnel-a1b2c3)
-        pod_name="tcp-tunnel-${random_suffix}"
+        # Fallback to generic name (e.g., tcp-tunnel-johns-macbook)
+        pod_name="tcp-tunnel-${hostname_suffix}"
     fi
 
     print_info "Environment: ${environment}"
@@ -592,36 +597,48 @@ create_tunnel() {
     fi
     print_success "Switched to context: ${context}"
 
-    # Check if pod already exists
+    # Check if pod already exists and is running
+    local pod_exists=false
     if kubectl --context="${context}" -n "${namespace}" get pod "${pod_name}" &>/dev/null; then
-        print_warning "Jump pod already exists: ${pod_name}"
-        print_info "Deleting existing pod..."
-        kubectl --context="${context}" -n "${namespace}" delete pod "${pod_name}" --grace-period=0 --force >/dev/null 2>&1 || true
-        sleep 2
+        local pod_status
+        pod_status=$(kubectl --context="${context}" -n "${namespace}" get pod "${pod_name}" -o jsonpath='{.status.phase}' 2>/dev/null)
+
+        if [[ "${pod_status}" == "Running" ]]; then
+            print_success "Found existing running pod: ${pod_name}"
+            print_info "Reusing existing pod..."
+            pod_exists=true
+        else
+            print_warning "Pod exists but not running (status: ${pod_status})"
+            print_info "Deleting and recreating pod..."
+            kubectl --context="${context}" -n "${namespace}" delete pod "${pod_name}" --grace-period=0 --force >/dev/null 2>&1 || true
+            sleep 2
+        fi
     fi
 
-    # Create jump pod
-    print_info "Creating jump pod..."
-    if ! kubectl --context="${context}" -n "${namespace}" run "${pod_name}" \
-        --image="${jump_pod_image}" \
-        --restart=Never \
-        --command -- socat TCP-LISTEN:"${remote_port}",fork,reuseaddr TCP:"${remote_host}":"${remote_port}"; then
-        print_error "Failed to create jump pod"
-        exit 1
-    fi
-    print_success "Created jump pod: ${pod_name}"
+    # Create jump pod only if it doesn't exist
+    if [[ "${pod_exists}" == false ]]; then
+        print_info "Creating jump pod..."
+        if ! kubectl --context="${context}" -n "${namespace}" run "${pod_name}" \
+            --image="${jump_pod_image}" \
+            --restart=Never \
+            --command -- socat TCP-LISTEN:"${remote_port}",fork,reuseaddr TCP:"${remote_host}":"${remote_port}"; then
+            print_error "Failed to create jump pod"
+            exit 1
+        fi
+        print_success "Created jump pod: ${pod_name}"
 
-    # Wait for pod to be ready
-    print_info "Waiting for pod to be ready (timeout: ${jump_pod_wait_timeout}s)..."
-    if ! kubectl --context="${context}" -n "${namespace}" wait pod/"${pod_name}" \
-        --for=condition=Ready \
-        --timeout="${jump_pod_wait_timeout}s" >/dev/null 2>&1; then
-        print_error "Pod failed to become ready within ${jump_pod_wait_timeout}s"
-        print_info "Pod status:"
-        kubectl --context="${context}" -n "${namespace}" describe pod "${pod_name}" | tail -20
-        exit 1
+        # Wait for pod to be ready
+        print_info "Waiting for pod to be ready (timeout: ${jump_pod_wait_timeout}s)..."
+        if ! kubectl --context="${context}" -n "${namespace}" wait pod/"${pod_name}" \
+            --for=condition=Ready \
+            --timeout="${jump_pod_wait_timeout}s" >/dev/null 2>&1; then
+            print_error "Pod failed to become ready within ${jump_pod_wait_timeout}s"
+            print_info "Pod status:"
+            kubectl --context="${context}" -n "${namespace}" describe pod "${pod_name}" | tail -20
+            exit 1
+        fi
+        print_success "Pod is ready"
     fi
-    print_success "Pod is ready"
 
     # Start port forwarding
     echo ""
@@ -631,7 +648,8 @@ create_tunnel() {
     echo ""
     print_info "You can now connect to localhost:${local_port}"
     echo ""
-    print_warning "Press Ctrl+C to stop the tunnel and clean up"
+    print_warning "Press Ctrl+C to stop port forwarding (pod will remain for reuse)"
+    print_info "To manually delete pod, run: kubectl tcp-tunnel cleanup"
     echo ""
 
     # Port forward (this blocks until Ctrl+C)
@@ -668,6 +686,48 @@ main() {
                 else
                     list_resources
                 fi
+                exit 0
+                ;;
+            cleanup)
+                print_info "Cleaning up jump pods for this machine..."
+
+                # Get hostname suffix
+                local hostname_suffix
+                hostname_suffix=$(hostname -s 2>/dev/null || hostname | cut -d. -f1)
+                hostname_suffix=$(echo "${hostname_suffix}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/^-*//' | sed 's/-*$//')
+
+                # Find all tunnel pods for this hostname
+                load_config
+                local namespace
+                namespace=$(get_setting "namespace" "${DEFAULT_NAMESPACE}")
+
+                # List all contexts from config
+                local contexts
+                contexts=$(yq eval '.environments[].k8s-context' "${CONFIG_FILE}" 2>/dev/null | sort -u)
+
+                local found_pods=false
+                while IFS= read -r ctx; do
+                    [[ -z "${ctx}" ]] && continue
+
+                    # Look for pods ending with this hostname
+                    local pods
+                    pods=$(kubectl --context="${ctx}" -n "${namespace}" get pods --no-headers 2>/dev/null | grep "tunnel-${hostname_suffix}" | awk '{print $1}' || true)
+
+                    if [[ -n "${pods}" ]]; then
+                        found_pods=true
+                        while IFS= read -r pod; do
+                            [[ -z "${pod}" ]] && continue
+                            print_info "Deleting pod: ${pod} (context: ${ctx})"
+                            kubectl --context="${ctx}" -n "${namespace}" delete pod "${pod}" --grace-period=0 --force >/dev/null 2>&1 || true
+                            print_success "Deleted: ${pod}"
+                        done <<< "${pods}"
+                    fi
+                done <<< "${contexts}"
+
+                if [[ "${found_pods}" == false ]]; then
+                    print_info "No jump pods found for this machine"
+                fi
+
                 exit 0
                 ;;
             edit-config)

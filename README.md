@@ -16,9 +16,9 @@ A kubectl plugin that simplifies creating secure TCP tunnels through Kubernetes 
 - **Configuration-driven** - Define connection aliases and environments in YAML
 - **Type system** - Use YAML anchors to define reusable connection types
 - **Multi-environment** - Support staging, production, and custom environments
-- **Automatic cleanup** - Jump pods are automatically deleted when you disconnect
+- **Pod reuse** - One pod per machine/connection type, automatically reused on reconnection
 - **Safe by default** - Uses kubectx for explicit context switching
-- **Zero permanent infrastructure** - Jump pods are temporary and ephemeral
+- **Zero permanent infrastructure** - Jump pods can be manually cleaned up when no longer needed
 
 ### How It Works
 
@@ -33,11 +33,12 @@ A kubectl plugin that simplifies creating secure TCP tunnels through Kubernetes 
 ```
 
 1. Plugin switches to the correct Kubernetes context (via kubectx)
-2. Creates a temporary jump pod running alpine/socat in your cluster
+2. Creates or reuses a jump pod running alpine/socat in your cluster (one pod per machine)
 3. Jump pod connects to the remote TCP service host
 4. kubectl port-forward tunnels your local port to the jump pod
 5. You connect with any client to localhost:port
-6. When you disconnect (Ctrl+C), the jump pod is automatically deleted
+6. When you disconnect (Ctrl+C), the port forward stops (pod remains for reuse)
+7. Use `kubectl tcp-tunnel cleanup` to manually delete pods when finished
 
 ## Quick Start
 
@@ -80,6 +81,32 @@ kubectl tcp-tunnel -e staging -c cache
 kubectl tcp-tunnel --env staging --connection user-db --local-port 5433
 # Or using short form
 kubectl tcp-tunnel -e staging -c user-db -p 5433
+
+# Clean up jump pods when finished
+kubectl tcp-tunnel cleanup
+```
+
+### Pod Reuse
+
+Jump pods are now reused across connections:
+
+- **One pod per machine/connection type** - Pods are named using your machine's hostname (e.g., `postgres-tunnel-johns-macbook`)
+- **Automatic reuse** - Reconnecting to the same service reuses the existing pod (faster startup)
+- **Manual cleanup** - Use `kubectl tcp-tunnel cleanup` to delete all jump pods for your machine
+- **No automatic deletion** - Pods remain after Ctrl+C for quick reconnection
+
+**Example workflow:**
+```bash
+# First connection - creates pod
+kubectl tcp-tunnel -e staging -c user-db
+# Press Ctrl+C to stop port forwarding
+
+# Second connection - reuses pod (faster!)
+kubectl tcp-tunnel -e staging -c user-db
+# Press Ctrl+C again
+
+# When finished for the day, clean up
+kubectl tcp-tunnel cleanup
 ```
 
 ## Requirements
@@ -109,7 +136,7 @@ sudo apt-get install kubectl kubectx yq
 ## Security
 
 - **No direct exposure** - Services never exposed to the internet
-- **Temporary access** - Jump pods exist only during your session
+- **Reusable pods** - Jump pods remain running until manually cleaned up
 - **Context isolation** - Explicit context switching prevents accidents
 - **Network policies** - Respects your cluster's network policies
 - **Audit trail** - All operations logged in Kubernetes audit logs

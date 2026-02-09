@@ -163,6 +163,10 @@ case "$query" in
         echo "order-db"
         echo "user-db"
         ;;
+    ".environments[].k8s-context")
+        echo "staging-cluster"
+        echo "prod-cluster"
+        ;;
     *)
         # Return empty for unknown queries (simulates null)
         echo ""
@@ -181,9 +185,24 @@ case "$1" in
     --context=*)
         case "$3" in
             get)
+                # Check if this is a pod status check (with -o jsonpath)
+                if [[ "$4" == "pod" ]] && [[ "$6" == "-o" ]] && [[ "$7" == "jsonpath={.status.phase}" ]]; then
+                    # Check if pod exists marker file is present
+                    if [[ -f "${TEST_DIR}/pod_exists" ]]; then
+                        echo "Running"
+                        exit 0
+                    fi
+                    exit 1
+                fi
+                # Regular pod existence check
+                if [[ -f "${TEST_DIR}/pod_exists" ]]; then
+                    exit 0
+                fi
                 exit 1  # Pod doesn't exist
                 ;;
             run)
+                # Mark pod as created
+                touch "${TEST_DIR}/pod_exists"
                 echo "pod/test-pod created"
                 exit 0
                 ;;
@@ -196,6 +215,8 @@ case "$1" in
                 wait $!
                 ;;
             delete)
+                # Remove pod exists marker
+                rm -f "${TEST_DIR}/pod_exists"
                 exit 0
                 ;;
         esac

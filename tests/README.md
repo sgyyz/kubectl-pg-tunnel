@@ -50,10 +50,15 @@ The test suite is split into logical groups:
    - Connection type extraction
 
 8. **`07_pod_name_generation_test.bats`** (4 tests)
-   - Random suffix generation
+   - Hostname-based pod naming
    - Mock tool verification (kubectl, kubectx, yq)
 
-**Total: 67 tests**
+9. **`08_cleanup_command_test.bats`** (3 tests)
+   - Cleanup command functionality
+   - Multi-context cleanup
+   - Hostname suffix handling
+
+**Total: 70 tests**
 
 ## Running Tests
 
@@ -189,12 +194,13 @@ Add to your test:
 Current test coverage includes:
 - ✅ Argument parsing and validation
 - ✅ Configuration loading and validation
-- ✅ All subcommands (ls, edit-config, help, version)
+- ✅ All subcommands (ls, edit-config, help, version, cleanup)
 - ✅ Environment and connection validation
 - ✅ Local and remote port configuration
 - ✅ All connection types (postgres, mysql, redis, mongodb, custom)
 - ✅ Error messages and user guidance
-- ✅ Pod name generation
+- ✅ Pod name generation (hostname-based)
+- ✅ Pod cleanup functionality
 - ✅ Mock tool verification
 
 ## Maintenance
