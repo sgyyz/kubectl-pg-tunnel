@@ -13,9 +13,9 @@ The test suite is split into logical groups:
    - Mock implementations (yq, kubectl, kubectx)
    - Helper functions used across all test files
 
-2. **`01_argument_parsing_test.bats`** (16 tests)
+2. **`01_argument_parsing_test.bats`** (17 tests)
    - Command-line argument parsing
-   - Flag validation
+   - Flag validation (including --cleanup flag)
    - Short and long argument forms
    - Error handling for missing/invalid arguments
 
@@ -58,7 +58,7 @@ The test suite is split into logical groups:
    - Multi-context cleanup
    - Hostname suffix handling
 
-**Total: 70 tests**
+**Total: 71 tests**
 
 ## Running Tests
 

@@ -76,6 +76,7 @@ OPTIONS:
     -e, --env <environment>       Environment to use (e.g., staging, production)
     -c, --connection <connection> Connection alias to use (supports any TCP service)
     -p, --local-port <port>       Local port to forward to (overrides connection type default)
+    --cleanup                     Delete jump pod on exit (default: keep for reuse)
     --help                        Show this help message
     --version                     Show version information
 
@@ -100,6 +101,9 @@ EXAMPLES:
 
     # Create tunnel to Redis cache
     ${SCRIPT_NAME} -e staging -c cache
+
+    # Create tunnel and clean up pod on exit
+    ${SCRIPT_NAME} -e staging -c user-db --cleanup
 
     # List all available environments and connections
     ${SCRIPT_NAME} ls
@@ -491,15 +495,23 @@ cleanup() {
     local pod_name="$1"
     local context="$2"
     local namespace="$3"
+    local should_delete_pod="$4"
 
     print_info "Cleaning up..."
     print_info "Port forwarding terminated"
 
-    # Note: Pod is left running for reuse
-    # To manually delete the pod, run:
-    # kubectl delete pod ${pod_name} -n ${namespace} --context=${context}
-
-    print_success "Cleanup complete (pod still running for reuse)"
+    # Delete pod if --cleanup flag was used
+    if [[ "${should_delete_pod}" == "true" ]]; then
+        if kubectl --context="${context}" -n "${namespace}" get pod "${pod_name}" &>/dev/null; then
+            kubectl --context="${context}" -n "${namespace}" delete pod "${pod_name}" --grace-period=0 --force &>/dev/null || true
+            print_success "Deleted jump pod: ${pod_name}"
+        fi
+    else
+        # Note: Pod is left running for reuse
+        # To manually delete the pod, run:
+        # kubectl delete pod ${pod_name} -n ${namespace} --context=${context}
+        print_success "Cleanup complete (pod still running for reuse)"
+    fi
 }
 
 # Create tunnel
@@ -507,6 +519,7 @@ create_tunnel() {
     local environment="$1"
     local connection="$2"
     local local_port="$3"
+    local cleanup_on_exit="${4:-false}"
 
     load_config
 
@@ -587,7 +600,7 @@ create_tunnel() {
     # Set up cleanup trap with current values
     # We want the variables to expand now, not when the trap fires
     # shellcheck disable=SC2064
-    trap "cleanup '${pod_name}' '${context}' '${namespace}'" EXIT INT TERM
+    trap "cleanup '${pod_name}' '${context}' '${namespace}' '${cleanup_on_exit}'" EXIT INT TERM
 
     # Switch context
     print_info "Switching to context: ${context}..."
@@ -648,8 +661,12 @@ create_tunnel() {
     echo ""
     print_info "You can now connect to localhost:${local_port}"
     echo ""
-    print_warning "Press Ctrl+C to stop port forwarding (pod will remain for reuse)"
-    print_info "To manually delete pod, run: kubectl tcp-tunnel cleanup"
+    if [[ "${cleanup_on_exit}" == "true" ]]; then
+        print_warning "Press Ctrl+C to stop the tunnel and delete the pod"
+    else
+        print_warning "Press Ctrl+C to stop port forwarding (pod will remain for reuse)"
+        print_info "To manually delete pod, run: kubectl tcp-tunnel cleanup"
+    fi
     echo ""
 
     # Port forward (this blocks until Ctrl+C)
@@ -668,6 +685,7 @@ main() {
     local environment=""
     local connection=""
     local local_port=""
+    local cleanup_on_exit="false"
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -766,6 +784,10 @@ main() {
                 local_port="$2"
                 shift 2
                 ;;
+            --cleanup)
+                cleanup_on_exit="true"
+                shift
+                ;;
             -*)
                 print_error "Unknown option: $1"
                 echo ""
@@ -815,7 +837,7 @@ main() {
     fi
 
     # Create the tunnel
-    create_tunnel "${environment}" "${connection}" "${local_port}"
+    create_tunnel "${environment}" "${connection}" "${local_port}" "${cleanup_on_exit}"
 }
 
 # Run main function
