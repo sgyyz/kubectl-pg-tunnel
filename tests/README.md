@@ -53,7 +53,15 @@ The test suite is split into logical groups:
    - Random suffix generation
    - Mock tool verification (kubectl, kubectx, yq)
 
-**Total: 67 tests**
+9. **`08_job_lifecycle_test.bats`** (11 tests)
+   - Kubernetes Job creation instead of bare pods
+   - activeDeadlineSeconds configuration
+   - Job labels and metadata
+   - Automatic cleanup timeout
+   - Pod name discovery from job
+   - tunnel-max-duration setting
+
+**Total: 78 tests**
 
 ## Running Tests
 
@@ -196,6 +204,8 @@ Current test coverage includes:
 - ✅ Error messages and user guidance
 - ✅ Pod name generation
 - ✅ Mock tool verification
+- ✅ Kubernetes Job lifecycle and automatic cleanup
+- ✅ Timeout configuration (tunnel-max-duration)
 
 ## Maintenance
 
