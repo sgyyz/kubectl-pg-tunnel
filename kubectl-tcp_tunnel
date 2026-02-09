@@ -421,11 +421,30 @@ upgrade_plugin() {
     print_info "Upgrading kubectl-tcp-tunnel..."
     echo ""
 
+    # Get the latest version from GitHub releases
+    local latest_version
+    latest_version=$(get_latest_version)
+
+    if [[ -z "${latest_version}" ]]; then
+        print_warning "Could not determine latest version, using main branch"
+        latest_version=""
+    else
+        print_info "Latest version available: ${latest_version}"
+    fi
+
+    # Construct the installer URL (use version tag if available, otherwise main)
+    local installer_url
+    if [[ -n "${latest_version}" ]]; then
+        installer_url="https://raw.githubusercontent.com/${GITHUB_REPO}/v${latest_version}/install.sh"
+    else
+        installer_url="https://raw.githubusercontent.com/${GITHUB_REPO}/main/install.sh"
+    fi
+
     # Check if we have curl or wget
     if command -v curl >/dev/null 2>&1; then
         print_info "Downloading and running installer..."
         # shellcheck disable=SC2312
-        if FORCE_INSTALL=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/sgyyz/kubectl-tcp-tunnel/main/install.sh)"; then
+        if FORCE_INSTALL=1 bash -c "$(curl -fsSL "${installer_url}")"; then
             echo ""
             print_success "Upgrade completed successfully!"
             echo ""
@@ -437,7 +456,7 @@ upgrade_plugin() {
     elif command -v wget >/dev/null 2>&1; then
         print_info "Downloading and running installer..."
         # shellcheck disable=SC2312
-        if FORCE_INSTALL=1 bash -c "$(wget -qO- https://raw.githubusercontent.com/sgyyz/kubectl-tcp-tunnel/main/install.sh)"; then
+        if FORCE_INSTALL=1 bash -c "$(wget -qO- "${installer_url}")"; then
             echo ""
             print_success "Upgrade completed successfully!"
             echo ""

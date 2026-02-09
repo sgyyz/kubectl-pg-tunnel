@@ -9,7 +9,8 @@ PLUGIN_NAME="kubectl-tcp_tunnel"
 CONFIG_DIR="${HOME}/.config/kubectl-tcp-tunnel"
 CONFIG_FILE="${CONFIG_DIR}/config.yaml"
 GITHUB_REPO="sgyyz/kubectl-tcp-tunnel"
-GITHUB_RAW="https://raw.githubusercontent.com/${GITHUB_REPO}/main"
+# Use version-specific tag for reliable installs (falls back to main if tag doesn't exist)
+GITHUB_RAW="https://raw.githubusercontent.com/${GITHUB_REPO}/v${VERSION}"
 
 # Color codes
 RED='\033[0;31m'
