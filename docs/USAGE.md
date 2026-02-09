@@ -28,6 +28,7 @@ kubectl tcp-tunnel --env <environment> --connection <connection> [OPTIONS]
 ### Optional Flags
 
 - `-p, --local-port <port>` - Local port to forward to (overrides connection type default)
+- `--cleanup` - Delete jump pod on exit (default: keep for reuse)
 - `--help` - Show help message
 - `--version` - Show version information
 
@@ -171,6 +172,9 @@ kubectl tcp-tunnel --env production --connection order-db
 
 # Use custom local port (short form)
 kubectl tcp-tunnel -e staging -c user-db -p 5433
+
+# Create tunnel with auto-cleanup on exit
+kubectl tcp-tunnel -e staging -c user-db --cleanup
 ```
 
 When the tunnel is established, you'll see:
@@ -275,10 +279,11 @@ Deletes all jump pods created by this machine. Jump pods are now reused across c
 **Pod reuse behavior:**
 - Pods are named using your machine's hostname (e.g., `postgres-tunnel-johns-macbook`)
 - Reconnecting to the same service reuses the existing pod (no creation delay)
-- Pods remain running after Ctrl+C for quick reconnection
+- Pods remain running after Ctrl+C for quick reconnection (default)
+- Use `--cleanup` flag to auto-delete pod on exit
 - Use `cleanup` command to delete all your machine's jump pods
 
-**Example workflow:**
+**Example workflow (default - pod reuse):**
 ```bash
 # First connection - creates pod
 kubectl tcp-tunnel -e staging -c user-db
@@ -289,6 +294,13 @@ kubectl tcp-tunnel -e staging -c user-db
 
 # When finished for the day
 kubectl tcp-tunnel cleanup
+```
+
+**Example workflow (with --cleanup flag):**
+```bash
+# Create tunnel with auto-cleanup
+kubectl tcp-tunnel -e staging -c user-db --cleanup
+# Press Ctrl+C - pod is automatically deleted
 ```
 
 ## Examples

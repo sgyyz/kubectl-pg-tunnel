@@ -106,3 +106,9 @@ teardown() {
     [ "$status" -eq 1 ]
     [[ "$output" =~ "Unexpected argument" ]]
 }
+
+@test "accepts --cleanup flag" {
+    run_plugin --help
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "--cleanup" ]]
+}
