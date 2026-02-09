@@ -4,7 +4,7 @@ set -euo pipefail
 
 # kubectl-tcp-tunnel Installation Script
 
-VERSION="2.1.0"
+VERSION="2.1.1"
 PLUGIN_NAME="kubectl-tcp_tunnel"
 CONFIG_DIR="${HOME}/.config/kubectl-tcp-tunnel"
 CONFIG_FILE="${CONFIG_DIR}/config.yaml"

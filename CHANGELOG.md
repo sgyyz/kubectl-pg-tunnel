@@ -1,6 +1,19 @@
 # Changelog
 
 
+## [2.1.1] - 2026-02-09
+
+### Added
+
+- add the cleanup flag when we start it (#25)
+- use the hostname as the pod suffix to make it reusable (#24)
+- use the job instead of pod to auto clean-up (#22)
+
+### Fixed
+
+- revert the job to use the pod (#23)
+
+
 ## [2.1.0] - 2026-02-08
 
 ### Changed
@@ -83,7 +96,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - add the uninstall command for this plugin (#4)
 - improve the README.md and remove the duplicate sections (#1)
 
-[Unreleased]: https://github.com/sgyyz/kubectl-tcp-tunnel/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/sgyyz/kubectl-tcp-tunnel/compare/v2.1.1...HEAD
 [1.0.0]: https://github.com/sgyyz/kubectl-tcp-tunnel/releases/tag/v1.0.0
 [1.0.1]: https://github.com/sgyyz/kubectl-tcp-tunnel/releases/tag/v1.0.1
 [2.0.0]: https://github.com/sgyyz/kubectl-tcp-tunnel/releases/tag/v2.0.0
@@ -91,3 +104,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [2.0.2]: https://github.com/sgyyz/kubectl-tcp-tunnel/releases/tag/v2.0.2
 [2.0.3]: https://github.com/sgyyz/kubectl-tcp-tunnel/releases/tag/v2.0.3
 [2.1.0]: https://github.com/sgyyz/kubectl-tcp-tunnel/releases/tag/v2.1.0
+[2.1.1]: https://github.com/sgyyz/kubectl-tcp-tunnel/releases/tag/v2.1.1

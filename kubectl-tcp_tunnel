@@ -6,7 +6,7 @@ set -euo pipefail
 # Version: v2.0.0
 # This placeholder will be replaced during release
 
-VERSION="${KUBECTL_TCP_TUNNEL_VERSION:-v2.1.0}"
+VERSION="${KUBECTL_TCP_TUNNEL_VERSION:-v2.1.1}"
 SCRIPT_NAME="kubectl tcp-tunnel"
 GITHUB_REPO="sgyyz/kubectl-tcp-tunnel"
 
