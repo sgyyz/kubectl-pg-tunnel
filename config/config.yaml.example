@@ -16,11 +16,6 @@ settings:
   # Timeout in seconds to wait for jump pod to become ready
   jump-pod-wait-timeout: 60
 
-  # Maximum tunnel duration before automatic cleanup (in seconds)
-  # Default: 28800 (8 hours)
-  # The tunnel will be automatically terminated after this duration
-  tunnel-max-duration: 28800
-
   # Connection type definitions (use YAML anchors for reusability)
   postgres: &postgres
     local-port: 15432

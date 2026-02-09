@@ -19,7 +19,6 @@ DEFAULT_JUMP_POD_IMAGE="alpine/socat:latest"
 DEFAULT_JUMP_POD_WAIT_TIMEOUT="60"
 DEFAULT_LOCAL_PORT="5432"
 DEFAULT_REMOTE_PORT="5432"
-DEFAULT_TUNNEL_MAX_DURATION="28800"  # 8 hours in seconds
 
 # Color codes for output
 RED='\033[0;31m'
@@ -121,11 +120,10 @@ ENVIRONMENT VARIABLES:
 
 HOW IT WORKS:
     1. Switches to the appropriate Kubernetes context (via kubectx)
-    2. Creates a temporary jump job using alpine/socat
+    2. Creates a temporary jump pod using alpine/socat
     3. Forwards local port to remote TCP service host:port
     4. Keeps the tunnel open until you press Ctrl+C
-    5. Automatically terminates after 28800s (configurable)
-    6. Cleans up the jump job and pod on exit
+    5. Cleans up the jump pod on exit
 
 For more information, visit: https://github.com/sgyyz/kubectl-tcp-tunnel
 EOF
@@ -489,16 +487,16 @@ uninstall_plugin() {
 
 # Cleanup function
 cleanup() {
-    local job_name="$1"
+    local pod_name="$1"
     local context="$2"
     local namespace="$3"
 
     print_info "Cleaning up..."
 
-    # Delete the job (this will also delete associated pods)
-    if kubectl --context="${context}" -n "${namespace}" get job "${job_name}" &>/dev/null; then
-        kubectl --context="${context}" -n "${namespace}" delete job "${job_name}" --grace-period=0 &>/dev/null || true
-        print_success "Deleted jump job: ${job_name}"
+    # Delete the jump pod
+    if kubectl --context="${context}" -n "${namespace}" get pod "${pod_name}" &>/dev/null; then
+        kubectl --context="${context}" -n "${namespace}" delete pod "${pod_name}" --grace-period=0 --force &>/dev/null || true
+        print_success "Deleted jump pod: ${pod_name}"
     fi
 }
 
@@ -515,12 +513,10 @@ create_tunnel() {
     local jump_pod_image
     local jump_pod_wait_timeout
     local remote_port
-    local tunnel_max_duration
 
     namespace=$(get_setting "namespace" "${DEFAULT_NAMESPACE}")
     jump_pod_image=$(get_setting "jump-pod-image" "${DEFAULT_JUMP_POD_IMAGE}")
     jump_pod_wait_timeout=$(get_setting "jump-pod-wait-timeout" "${DEFAULT_JUMP_POD_WAIT_TIMEOUT}")
-    tunnel_max_duration=$(get_setting "tunnel-max-duration" "${DEFAULT_TUNNEL_MAX_DURATION}")
 
     # Try to get remote-port from connection type definition first
     remote_port=$(get_connection_remote_port "${environment}" "${connection}")
@@ -578,10 +574,9 @@ create_tunnel() {
     print_info "Context: ${context}"
     print_info "Connection: ${connection} (${remote_host})"
     print_info "Namespace: ${namespace}"
-    print_info "Jump job: ${pod_name}"
+    print_info "Jump pod: ${pod_name}"
     print_info "Local port: ${local_port}"
     print_info "Remote port: ${remote_port}"
-    print_info "Auto-cleanup: ${tunnel_max_duration}s"
     echo ""
 
     # Set up cleanup trap with current values
@@ -597,82 +592,33 @@ create_tunnel() {
     fi
     print_success "Switched to context: ${context}"
 
-    # Check if job already exists
-    if kubectl --context="${context}" -n "${namespace}" get job "${pod_name}" &>/dev/null; then
-        print_warning "Jump job already exists: ${pod_name}"
-        print_info "Deleting existing job..."
-        kubectl --context="${context}" -n "${namespace}" delete job "${pod_name}" --grace-period=0 >/dev/null 2>&1 || true
+    # Check if pod already exists
+    if kubectl --context="${context}" -n "${namespace}" get pod "${pod_name}" &>/dev/null; then
+        print_warning "Jump pod already exists: ${pod_name}"
+        print_info "Deleting existing pod..."
+        kubectl --context="${context}" -n "${namespace}" delete pod "${pod_name}" --grace-period=0 --force >/dev/null 2>&1 || true
         sleep 2
     fi
 
-    # Create jump job with activeDeadlineSeconds
-    print_info "Creating jump job (auto-cleanup after ${tunnel_max_duration}s)..."
-    if ! kubectl --context="${context}" -n "${namespace}" create -f - <<EOF
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: ${pod_name}
-  labels:
-    app: kubectl-tcp-tunnel
-    managed-by: kubectl-tcp-tunnel
-spec:
-  activeDeadlineSeconds: ${tunnel_max_duration}
-  backoffLimit: 0
-  template:
-    metadata:
-      labels:
-        app: kubectl-tcp-tunnel
-        job-name: ${pod_name}
-    spec:
-      restartPolicy: Never
-      containers:
-      - name: socat
-        image: ${jump_pod_image}
-        command:
-        - socat
-        - TCP-LISTEN:${remote_port},fork,reuseaddr
-        - TCP:${remote_host}:${remote_port}
-EOF
-    then
-        print_error "Failed to create jump job"
+    # Create jump pod
+    print_info "Creating jump pod..."
+    if ! kubectl --context="${context}" -n "${namespace}" run "${pod_name}" \
+        --image="${jump_pod_image}" \
+        --restart=Never \
+        --command -- socat TCP-LISTEN:"${remote_port}",fork,reuseaddr TCP:"${remote_host}":"${remote_port}"; then
+        print_error "Failed to create jump pod"
         exit 1
     fi
-    print_success "Created jump job: ${pod_name}"
-
-    # Find the pod created by the job
-    print_info "Finding pod created by job..."
-    local actual_pod_name=""
-    local max_attempts=10
-    local attempt=0
-
-    while [[ ${attempt} -lt ${max_attempts} ]]; do
-        actual_pod_name=$(kubectl --context="${context}" -n "${namespace}" get pods \
-            --selector="job-name=${pod_name}" \
-            -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-
-        if [[ -n "${actual_pod_name}" ]]; then
-            break
-        fi
-
-        attempt=$((attempt + 1))
-        sleep 1
-    done
-
-    if [[ -z "${actual_pod_name}" ]]; then
-        print_error "Failed to find pod created by job"
-        exit 1
-    fi
-
-    print_success "Found pod: ${actual_pod_name}"
+    print_success "Created jump pod: ${pod_name}"
 
     # Wait for pod to be ready
     print_info "Waiting for pod to be ready (timeout: ${jump_pod_wait_timeout}s)..."
-    if ! kubectl --context="${context}" -n "${namespace}" wait pod/"${actual_pod_name}" \
+    if ! kubectl --context="${context}" -n "${namespace}" wait pod/"${pod_name}" \
         --for=condition=Ready \
         --timeout="${jump_pod_wait_timeout}s" >/dev/null 2>&1; then
         print_error "Pod failed to become ready within ${jump_pod_wait_timeout}s"
         print_info "Pod status:"
-        kubectl --context="${context}" -n "${namespace}" describe pod "${actual_pod_name}" | tail -20
+        kubectl --context="${context}" -n "${namespace}" describe pod "${pod_name}" | tail -20
         exit 1
     fi
     print_success "Pod is ready"
@@ -682,15 +628,14 @@ EOF
     print_success "Tunnel established!"
     print_info "Local:  localhost:${local_port}"
     print_info "Remote: ${remote_host}:${remote_port}"
-    print_info "Auto-cleanup: After ${tunnel_max_duration}s"
     echo ""
     print_info "You can now connect to localhost:${local_port}"
     echo ""
     print_warning "Press Ctrl+C to stop the tunnel and clean up"
     echo ""
 
-    # Port forward to the actual pod (not the job name)
-    kubectl --context="${context}" -n "${namespace}" port-forward pod/"${actual_pod_name}" "${local_port}":"${remote_port}"
+    # Port forward (this blocks until Ctrl+C)
+    kubectl --context="${context}" -n "${namespace}" port-forward pod/"${pod_name}" "${local_port}":"${remote_port}"
 }
 
 # Main function
