@@ -22,6 +22,7 @@ settings:
   namespace: test-namespace
   jump-pod-image: alpine/socat:latest
   jump-pod-wait-timeout: 60
+  tunnel-max-duration: 28800
 
   postgres: &postgres
     local-port: 15432
@@ -72,6 +73,9 @@ case "$query" in
         ;;
     ".settings.jump-pod-wait-timeout")
         echo "60"
+        ;;
+    ".settings.tunnel-max-duration")
+        echo "28800"
         ;;
     ".settings.remote-port")
         echo "5432"
@@ -181,10 +185,16 @@ case "$1" in
     --context=*)
         case "$3" in
             get)
-                exit 1  # Pod doesn't exist
+                # Check if we're getting a job or pod
+                if [[ "$4" == "job"* ]] || [[ "$4" == "pods" ]]; then
+                    exit 1  # Job/Pod doesn't exist
+                fi
+                exit 1
                 ;;
-            run)
-                echo "pod/test-pod created"
+            create)
+                # Mock job creation - read YAML from stdin
+                cat > "${TEST_DIR}/job-manifest.yaml"
+                echo "job.batch/test-job created"
                 exit 0
                 ;;
             wait)
@@ -201,6 +211,16 @@ case "$1" in
         esac
         ;;
 esac
+
+# Handle kubectl get pods with selector
+if [[ "$*" == *"get pods"* ]] && [[ "$*" == *"--selector="* ]]; then
+    # Extract job name from selector
+    job_name=$(echo "$*" | grep -o 'job-name=[^ ]*' | cut -d= -f2)
+    # Return a generated pod name
+    echo "${job_name}-abcde"
+    exit 0
+fi
+
 exit 0
 EOSCRIPT
     chmod +x "${TEST_DIR}/bin/kubectl"
