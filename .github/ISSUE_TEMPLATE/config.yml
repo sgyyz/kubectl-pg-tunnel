@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or Discussion
+    url: https://github.com/sgyyz/kubectl-tcp-tunnel/discussions
+    about: Ask questions or discuss ideas with the community
+  - name: Documentation
+    url: https://github.com/sgyyz/kubectl-tcp-tunnel/blob/main/README.md
+    about: Read the documentation for usage and configuration help
+  - name: Security Vulnerability
+    url: https://github.com/sgyyz/kubectl-tcp-tunnel/security/advisories/new
+    about: Report security vulnerabilities privately (do not create public issues)
